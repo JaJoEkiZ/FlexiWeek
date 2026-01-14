@@ -35,6 +35,10 @@ class WeeklyPlanner extends Component
     {
         $task = Task::findOrFail($taskId);
 
+        if ($task->progress >= 100) {
+            return;
+        }
+
         // Excluimos 'Completed' del ciclo manual
         $statuses = collect(TaskStatus::cases())
             ->filter(fn ($s) => $s !== TaskStatus::Completed)

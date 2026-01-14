@@ -107,11 +107,18 @@
                     </thead>
                     <tbody class="divide-y divide-[#333]">
                         @forelse($currentPeriod->tasks as $task)
-                            <tr wire:key="task-{{ $task->id }}" class="hover:bg-[#2a2d2e] transition-colors group">
+                            <tr 
+                                wire:key="task-{{ $task->id }}" 
+                                wire:click="openTaskForm({{ $task->id }})"
+                                class="hover:bg-[#2a2d2e] transition-colors group cursor-pointer"
+                            >
                                 <td class="p-4">
                                         <button 
                                                 wire:click="cycleStatus({{ $task->id }})"
-                                                class="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium border transition-all cursor-pointer select-none
+                                                @click.stop
+                                                @if($task->progress >= 100) disabled @endif
+                                                class="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium border transition-all select-none
+                                                {{ $task->progress >= 100 ? 'opacity-75 cursor-not-allowed' : 'cursor-pointer' }}
                                                 {{ $task->status->color() === 'green' ? 'bg-[#1e3a23] text-[#7ee787] border-[#2ea043]' : '' }}
                                                 {{ $task->status->color() === 'blue'  ? 'bg-[#152e42] text-[#79c0ff] border-[#1f6feb]' : '' }}
                                                 {{ $task->status->color() === 'yellow'? 'bg-[#362808] text-[#d29922] border-[#9e6a03]' : '' }}
@@ -131,7 +138,6 @@
                                     <div class="font-medium text-[#d4d4d4] group-hover:text-white transition-colors">
                                         <span class="text-[#569cd6] opacity-50 mr-2"></span>{{ $task->title }}
                                     </div>
-                                    </div>
                                 </td>
                                 <td class="p-4 text-center font-mono text-sm text-[#d4d4d4]">
                                     @php
@@ -142,12 +148,13 @@
                                 </td>
                                 <td class="p-4 text-center font-mono text-sm">
                                     @php
-                                        $remainingMinutes = max(0, $task->estimated_minutes - $task->total_spent);
-                                        $remainingHours = intdiv($remainingMinutes, 60);
-                                        $remMinutes = $remainingMinutes % 60;
-                                        $isOvertime = $task->total_spent > $task->estimated_minutes;
+                                        $diffMinutes = $task->estimated_minutes - $task->total_spent;
+                                        $isOvertime = $diffMinutes < 0;
+                                        $absMinutes = abs($diffMinutes);
+                                        $remainingHours = intdiv($absMinutes, 60);
+                                        $remMinutes = $absMinutes % 60;
                                     @endphp
-                                    <span class="{{ $isOvertime ? 'text-[#f14c4c]' : ($remainingMinutes == 0 ? 'text-[#4ec9b0]' : 'text-[#ce9178]') }}">
+                                    <span class="{{ $isOvertime ? 'text-[#f14c4c]' : ($diffMinutes == 0 ? 'text-[#4ec9b0]' : 'text-[#ce9178]') }}">
                                         {{ $isOvertime ? '-' : '' }}{{ $remainingHours }}h {{ $remMinutes }}m
                                     </span>
                                 </td>
@@ -169,6 +176,7 @@
                                         <div class="flex gap-2">
                                             <input 
                                                 type="number" 
+                                                @click.stop
                                                 placeholder="0" 
                                                 wire:model="minutesInput.{{ $task->id }}"
                                                 wire:keydown.enter="addTime({{ $task->id }})"
@@ -177,6 +185,7 @@
 
                                             <button 
                                                 wire:click="addTime({{ $task->id }})"
+                                                @click.stop
                                                 class="px-3 py-1 bg-[#333] hover:bg-[#444] text-[#d4d4d4] rounded border border-[#333] text-xs font-bold transition-colors"
                                                 title="Sumar tiempo">
                                                 +
@@ -186,6 +195,7 @@
                                 <td class="p-4 text-right">
                                     <button 
                                         wire:click="openTaskForm({{ $task->id }})"
+                                        @click.stop
                                         class="text-[#7b7b7b] hover:text-white transition-colors p-1 rounded hover:bg-[#333]">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
