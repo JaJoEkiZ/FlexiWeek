@@ -18,7 +18,9 @@ class TaskForm extends Component
 
     public $title = '';
 
-    public $estimatedMinutes = 0;
+    public $hours = 0;
+
+    public $minutes = 0;
 
     // Computed properties for view
     public $periods = [];
@@ -28,15 +30,12 @@ class TaskForm extends Component
     public function mount()
     {
         // Load periods for dropdown
-        // Assuming we want active periods or all? Let's load future/current ones primarily,
-        // or just all since a task could theoretically be backdated?
-        // For now, let's just grab them all to be safe, or optimize later.
-        $this->periods = Period::orderBy('start_date', 'desc')->get();
+        $this->periods = Period::where('user_id', auth()->id())->orderBy('start_date', 'desc')->get();
     }
 
     public function openTaskForm($payload = [])
     {
-        $this->reset(['taskId', 'title', 'estimatedMinutes', 'periodId']);
+        $this->reset(['taskId', 'title', 'periodId', 'hours', 'minutes']);
 
         $this->taskId = $payload['taskId'] ?? null;
         $defaultPeriodId = $payload['periodId'] ?? null;
@@ -45,10 +44,14 @@ class TaskForm extends Component
             $task = Task::findOrFail($this->taskId);
             $this->periodId = $task->period_id;
             $this->title = $task->title;
-            $this->estimatedMinutes = $task->estimated_minutes;
+
+            $this->hours = intdiv($task->estimated_minutes, 60);
+            $this->minutes = $task->estimated_minutes % 60;
         } else {
             // New Task
-            $this->periodId = $defaultPeriodId ?? Period::orderBy('start_date', 'desc')->first()?->id;
+            $this->periodId = $defaultPeriodId ?? Period::where('user_id', auth()->id())->orderBy('start_date', 'desc')->first()?->id;
+            $this->hours = 0;
+            $this->minutes = 0;
         }
 
         $this->isOpen = true;
@@ -59,22 +62,25 @@ class TaskForm extends Component
         $this->validate([
             'periodId' => 'required|exists:periods,id',
             'title' => 'required|min:3',
-            'estimatedMinutes' => 'required|integer|min:0',
+            'hours' => 'required|integer|min:0',
+            'minutes' => 'required|integer|min:0|max:59',
         ]);
+
+        $totalMinutes = ($this->hours * 60) + $this->minutes;
 
         if ($this->taskId) {
             $task = Task::findOrFail($this->taskId);
             $task->update([
                 'period_id' => $this->periodId,
                 'title' => $this->title,
-                'estimated_minutes' => $this->estimatedMinutes,
+                'estimated_minutes' => $totalMinutes,
             ]);
             $message = 'Tarea actualizada correctamente.';
         } else {
             Task::create([
                 'period_id' => $this->periodId,
                 'title' => $this->title,
-                'estimated_minutes' => $this->estimatedMinutes,
+                'estimated_minutes' => $totalMinutes,
                 'status' => TaskStatus::Pending,
             ]);
             $message = 'Tarea creada correctamente.';
@@ -88,7 +94,7 @@ class TaskForm extends Component
     public function close()
     {
         $this->isOpen = false;
-        $this->reset(['taskId', 'title', 'estimatedMinutes', 'periodId']);
+        $this->reset(['taskId', 'title', 'hours', 'minutes', 'periodId']);
     }
 
     public function render()
