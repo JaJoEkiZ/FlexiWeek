@@ -101,7 +101,14 @@ class WeeklyPlanner extends Component
         if ($this->selectedPeriodId) {
             $currentPeriod = Period::with(['tasks' => function ($query) {
                 // ... (ordering logic remains same if complicated, or simplified)
-                $query->orderByRaw("FIELD(status, 'pending', 'in_progress', 'completed')");
+                $query->orderByRaw("
+                    CASE status
+                        WHEN 'pending' THEN 1
+                        WHEN 'in_progress' THEN 2
+                        WHEN 'completed' THEN 3
+                        ELSE 4
+                    END
+                ");
             }])->find($this->selectedPeriodId);
         }
 
