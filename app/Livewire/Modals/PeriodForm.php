@@ -57,7 +57,7 @@ class PeriodForm extends Component
         $start = Carbon::parse($this->startDate);
         $end = Carbon::parse($this->endDate);
 
-        $query = Period::query();
+        $query = Period::query()->where('user_id', auth()->id());
         if ($this->periodId) {
             $query->where('id', '!=', $this->periodId);
         }
@@ -105,7 +105,7 @@ class PeriodForm extends Component
         $currentId = $this->periodId;
 
         DB::transaction(function () use ($newStart, $newEnd, $currentId) {
-            $query = Period::query();
+            $query = Period::query()->where('user_id', auth()->id());
             if ($currentId) {
                 $query->where('id', '!=', $currentId);
             }

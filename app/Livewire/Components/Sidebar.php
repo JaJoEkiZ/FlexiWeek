@@ -52,11 +52,13 @@ class Sidebar extends Component
         $today = now()->format('Y-m-d');
 
         // Logic copied/adapted from WeeklyPlanner
-        $activePeriods = Period::where('end_date', '>=', $today)
+        $activePeriods = Period::where('user_id', auth()->id())
+            ->where('end_date', '>=', $today)
             ->orderBy('start_date', 'asc')
             ->get();
 
-        $pastPeriods = Period::where('end_date', '<', $today)
+        $pastPeriods = Period::where('user_id', auth()->id())
+            ->where('end_date', '<', $today)
             ->orderBy('start_date', 'desc')
             ->get();
 

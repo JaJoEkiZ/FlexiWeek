@@ -20,10 +20,11 @@ class WeeklyPlanner extends Component
     {
         // Seleccionar por defecto la semana actual o la siguiente más próxima
         $today = now()->format('Y-m-d');
-        $this->selectedPeriodId = Period::where('end_date', '>=', $today)
+        $this->selectedPeriodId = Period::where('user_id', auth()->id())
+            ->where('end_date', '>=', $today)
             ->orderBy('start_date', 'asc')
             ->first()?->id
-            ?? Period::orderBy('start_date', 'desc')->first()?->id; // Fallback a la última si no hay futuras
+            ?? Period::where('user_id', auth()->id())->orderBy('start_date', 'desc')->first()?->id; // Fallback a la última si no hay futuras
     }
 
     public function selectPeriod($periodId)
@@ -104,7 +105,7 @@ class WeeklyPlanner extends Component
             }])->find($this->selectedPeriodId);
         }
 
-        $periods = Period::orderBy('start_date', 'desc')->get(); // Still used for TaskForm dropdown
+        $periods = Period::where('user_id', auth()->id())->orderBy('start_date', 'desc')->get(); // Still used for TaskForm dropdown
 
         return view('livewire.weekly-planner', [
             'currentPeriod' => $currentPeriod,

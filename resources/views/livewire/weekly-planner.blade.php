@@ -206,7 +206,7 @@
                         @empty
                             <tr>
                                 <td colspan="6" class="p-12 text-center text-[#7b7b7b] italic font-mono">
-                                    // No tasks found in this period
+                                    // No hay tareas en esta semana
                                 </td>
                             </tr>
                         @endforelse
@@ -215,8 +215,8 @@
             </div>
         @else
             <div class="flex flex-col items-center justify-center h-full text-[#7b7b7b]">
-                <div class="text-6xl mb-4 opacity-20">code</div>
-                <p class="font-mono text-sm">Select a period to start coding...</p>
+                <div class="text-6xl mb-4 opacity-20">No hay semanas activas</div>
+                <p class="font-mono text-sm">Genera una semana para comenzar...</p>
             </div>
         @endif
     </div>
