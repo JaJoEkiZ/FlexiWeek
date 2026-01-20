@@ -34,8 +34,26 @@ class Task extends Model
         return $this->timeLogs->sum('minutes_spent');
     }
 
+    // Relación con Subtareas
+    public function subtasks()
+    {
+        return $this->hasMany(Subtask::class);
+    }
+
+    // subTareas
     public function getProgressAttribute()
     {
+        if ($this->completion_method === 'subtasks') {
+            $totalSubtasks = $this->subtasks->count();
+            if ($totalSubtasks === 0) {
+                return 0;
+            }
+
+            $completedSubtasks = $this->subtasks->where('is_completed', true)->count();
+
+            return round(($completedSubtasks / $totalSubtasks) * 100);
+        }
+
         if (! $this->estimated_minutes || $this->estimated_minutes == 0) {
             return 0;
         }

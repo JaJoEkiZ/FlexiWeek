@@ -27,6 +27,10 @@ class TaskForm extends Component
 
     protected $listeners = ['openTaskForm'];
 
+    public $completionMethod = 'time'; // 'time' por defecto
+
+    public $subtasks = []; // Array para nuevas subtareas inputs
+
     public function mount()
     {
         // Load periods for dropdown
@@ -44,7 +48,10 @@ class TaskForm extends Component
             $task = Task::findOrFail($this->taskId);
             $this->periodId = $task->period_id;
             $this->title = $task->title;
-
+            $this->completionMethod = $task->completion_method ?? 'time';
+            $this->subtasks = $task->subtasks()->get()->map(function ($subtask) {
+                return ['title' => $subtask->title, 'is_completed' => (bool) $subtask->is_completed];
+            })->toArray(); // Cargar subtareas
             $this->hours = intdiv($task->estimated_minutes, 60);
             $this->minutes = $task->estimated_minutes % 60;
         } else {
@@ -52,6 +59,8 @@ class TaskForm extends Component
             $this->periodId = $defaultPeriodId ?? Period::where('user_id', auth()->id())->orderBy('start_date', 'desc')->first()?->id;
             $this->hours = 0;
             $this->minutes = 0;
+            $this->completionMethod = 'time';
+            $this->subtasks = [];
         }
 
         $this->isOpen = true;
@@ -64,6 +73,8 @@ class TaskForm extends Component
             'title' => 'required|min:3',
             'hours' => 'required|integer|min:0',
             'minutes' => 'required|integer|min:0|max:59',
+            'completionMethod' => 'required|in:time,subtasks',
+            'subtasks.*.title' => 'required_if:completionMethod,subtasks|string|max:255',
         ]);
 
         $totalMinutes = ($this->hours * 60) + $this->minutes;
@@ -74,21 +85,53 @@ class TaskForm extends Component
                 'period_id' => $this->periodId,
                 'title' => $this->title,
                 'estimated_minutes' => $totalMinutes,
+                'completion_method' => $this->completionMethod,
             ]);
             $message = 'Tarea actualizada correctamente.';
         } else {
-            Task::create([
+            $task = Task::create([
                 'period_id' => $this->periodId,
                 'title' => $this->title,
                 'estimated_minutes' => $totalMinutes,
                 'status' => TaskStatus::Pending,
+                'completion_method' => $this->completionMethod,
             ]);
             $message = 'Tarea creada correctamente.';
+        }
+
+        // Guardar Subtareas
+        if ($this->completionMethod === 'subtasks') {
+            // Opcional: limpiar anteriores si es edición simple (reemplazo total)
+            // Si quieres actualizar existentes, necesitarías ids.
+            // Para "simple", borramos y recreamos:
+            if ($this->taskId) {
+                $task->subtasks()->delete();
+            }
+
+            foreach ($this->subtasks as $subtaskData) {
+                if (! empty($subtaskData['title'])) {
+                    $task->subtasks()->create([
+                        'title' => $subtaskData['title'],
+                        'is_completed' => $subtaskData['is_completed'] ?? false,
+                    ]);
+                }
+            }
         }
 
         $this->isOpen = false;
         $this->dispatch('taskSaved'); // Notify parent to refresh
         session()->flash('message', $message);
+    }
+
+    public function addSubtask()
+    {
+        $this->subtasks[] = ['title' => '', 'is_completed' => false];
+    }
+
+    public function removeSubtask($index)
+    {
+        unset($this->subtasks[$index]);
+        $this->subtasks = array_values($this->subtasks); // Reindexar
     }
 
     public function close()

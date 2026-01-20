@@ -99,7 +99,7 @@ class WeeklyPlanner extends Component
     {
         $currentPeriod = null;
         if ($this->selectedPeriodId) {
-            $currentPeriod = Period::with(['tasks' => function ($query) {
+            $currentPeriod = Period::with(['tasks.subtasks', 'tasks' => function ($query) {
                 // ... (ordering logic remains same if complicated, or simplified)
                 $query->orderByRaw("
                     CASE status

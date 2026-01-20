@@ -159,39 +159,48 @@
                                     </span>
                                 </td>
                                 <td class="p-4 align-top">
-                                        <div class="mb-3">
-                                            <div class="flex justify-between text-xs mb-1 font-mono">
-                                                <span class="text-[#9cdcfe]">{{ $task->total_spent }}m <span class="text-[#6a9955]">// {{ $task->estimated_minutes }}m</span></span>
-                                                <span class="{{ $task->progress >= 100 ? 'text-[#4ec9b0]' : 'text-[#7b7b7b]' }}">
-                                                    {{ $task->progress }}%
+                                    <div class="mb-3">
+                                        <div class="flex justify-between text-xs mb-1 font-mono">
+                                            @if($task->completion_method === 'subtasks')
+                                                <span class="text-[#9cdcfe]">
+                                                    {{ $task->subtasks->where('is_completed', true)->count() }} / {{ $task->subtasks->count() }} Subtasks
                                                 </span>
-                                            </div>
-
-                                            <div class="w-full bg-[#3c3c3c] rounded-full h-1.5 overflow-hidden">
-                                                <div class="h-1.5 rounded-full transition-all duration-500 {{ $task->progress >= 100 ? 'bg-[#4ec9b0]' : 'bg-[#007fd4]' }}" 
-                                                     style="width: {{ $task->progress }}%"></div>
-                                            </div>
+                                            @else
+                                                <span class="text-[#9cdcfe]">{{ $task->total_spent }}m <span class="text-[#6a9955]">// {{ $task->estimated_minutes }}m</span></span>
+                                            @endif
+                                            
+                                            <span class="{{ $task->progress >= 100 ? 'text-[#4ec9b0]' : 'text-[#7b7b7b]' }}">
+                                                {{ $task->progress }}%
+                                            </span>
                                         </div>
 
-                                        <div class="flex gap-2">
-                                            <input 
-                                                type="number" 
-                                                @click.stop
-                                                placeholder="0" 
-                                                wire:model="minutesInput.{{ $task->id }}"
-                                                wire:keydown.enter="addTime({{ $task->id }})"
-                                                class="w-full px-2 py-1 text-xs bg-[#3c3c3c] border border-[#333] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:ring-1 focus:ring-[#007fd4] focus:outline-none placeholder-[#666]"
-                                            >
-
-                                            <button 
-                                                wire:click="addTime({{ $task->id }})"
-                                                @click.stop
-                                                class="px-3 py-1 bg-[#333] hover:bg-[#444] text-[#d4d4d4] rounded border border-[#333] text-xs font-bold transition-colors"
-                                                title="Sumar tiempo">
-                                                +
-                                            </button>
+                                        <div class="w-full bg-[#3c3c3c] rounded-full h-1.5 overflow-hidden">
+                                            <div class="h-1.5 rounded-full transition-all duration-500 {{ $task->progress >= 100 ? 'bg-[#4ec9b0]' : 'bg-[#007fd4]' }}" 
+                                                 style="width: {{ $task->progress }}%"></div>
                                         </div>
-                                    </td>
+                                    </div>
+
+                                    @if($task->completion_method !== 'subtasks')
+                                    <div class="flex gap-2">
+                                        <input 
+                                            type="number" 
+                                            @click.stop
+                                            placeholder="0" 
+                                            wire:model="minutesInput.{{ $task->id }}"
+                                            wire:keydown.enter="addTime({{ $task->id }})"
+                                            class="w-full px-2 py-1 text-xs bg-[#3c3c3c] border border-[#333] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:ring-1 focus:ring-[#007fd4] focus:outline-none placeholder-[#666]"
+                                        >
+
+                                        <button 
+                                            wire:click="addTime({{ $task->id }})"
+                                            @click.stop
+                                            class="px-3 py-1 bg-[#333] hover:bg-[#444] text-[#d4d4d4] rounded border border-[#333] text-xs font-bold transition-colors"
+                                            title="Sumar tiempo">
+                                            +
+                                        </button>
+                                    </div>
+                                    @endif
+                                </td>
                                 <td class="p-4 text-right">
                                     <button 
                                         wire:click="openTaskForm({{ $task->id }})"
