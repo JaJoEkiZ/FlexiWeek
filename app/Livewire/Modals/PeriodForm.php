@@ -5,6 +5,7 @@ namespace App\Livewire\Modals;
 use App\Models\Period;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Livewire\Component;
 
 class PeriodForm extends Component
@@ -21,17 +22,13 @@ class PeriodForm extends Component
     public $endDate = '';
 
     // Conflict handling
-    public $isOverlapModalOpen = false;
-
-    public $overlapMessage = '';
-
     public $pendingPeriodData = [];
 
     protected $listeners = ['openPeriodForm'];
 
     public function openPeriodForm($periodId = null)
     {
-        $this->reset(['periodId', 'name', 'startDate', 'endDate', 'isOverlapModalOpen', 'pendingPeriodData']);
+        $this->reset(['periodId', 'name', 'startDate', 'endDate', 'pendingPeriodData']);
 
         $this->periodId = $periodId;
 
@@ -53,36 +50,14 @@ class PeriodForm extends Component
             'endDate' => 'required|date|after_or_equal:startDate',
         ]);
 
-        // Check for overlaps
-        $start = Carbon::parse($this->startDate);
-        $end = Carbon::parse($this->endDate);
+        Log::info('PeriodForm save called', [
+            'periodId' => $this->periodId,
+            'start' => $this->startDate,
+            'end' => $this->endDate,
+        ]);
 
-        $query = Period::query()->where('user_id', auth()->id());
-        if ($this->periodId) {
-            $query->where('id', '!=', $this->periodId);
-        }
-
-        $conflictingPeriods = $query->where(function ($query) use ($start, $end) {
-            $query->whereBetween('start_date', [$start, $end])
-                ->orWhereBetween('end_date', [$start, $end])
-                ->orWhere(function ($q) use ($start, $end) {
-                    $q->where('start_date', '<', $start)
-                        ->where('end_date', '>', $end);
-                });
-        })->get();
-
-        if ($conflictingPeriods->isNotEmpty()) {
-            $this->isOverlapModalOpen = true;
-            $this->overlapMessage = 'El periodo seleccionado se superpone con '.$conflictingPeriods->count().' periodo(s) existente(s).';
-
-            $this->pendingPeriodData = [
-                'name' => $this->name,
-                'start_date' => $this->startDate,
-                'end_date' => $this->endDate,
-            ];
-
-            return;
-        }
+        // Check for overlaps and resolve automatically
+        $this->resolveOverlaps();
 
         $this->savePeriodChanges([
             'name' => $this->name,
@@ -94,14 +69,10 @@ class PeriodForm extends Component
         session()->flash('message', 'Semana guardada correctamente.');
     }
 
-    public function confirmOverlapAdjustment()
+    public function resolveOverlaps()
     {
-        if (empty($this->pendingPeriodData)) {
-            return;
-        }
-
-        $newStart = Carbon::parse($this->pendingPeriodData['start_date']);
-        $newEnd = Carbon::parse($this->pendingPeriodData['end_date']);
+        $newStart = Carbon::parse($this->startDate);
+        $newEnd = Carbon::parse($this->endDate);
         $currentId = $this->periodId;
 
         DB::transaction(function () use ($newStart, $newEnd, $currentId) {
@@ -119,37 +90,30 @@ class PeriodForm extends Component
                     });
             })->get();
 
+            Log::info('Conflicting periods found and fixing', ['count' => $conflictingPeriods->count()]);
+
             foreach ($conflictingPeriods as $conflict) {
                 $cStart = Carbon::parse($conflict->start_date);
                 $cEnd = Carbon::parse($conflict->end_date);
 
+                // Case 1: New period completely covers old one -> Delete old one
                 if ($cStart->gte($newStart) && $cEnd->lte($newEnd)) {
                     $conflict->delete();
 
                     continue;
                 }
 
+                // Case 2: Overlap at the end of old period -> Shorten end
                 if ($cStart->lt($newStart) && $cEnd->gte($newStart)) {
                     $conflict->update(['end_date' => $newStart->copy()->subDay()]);
                 }
 
+                // Case 3: Overlap at the start of old period -> Shorten start
                 if ($cStart->lte($newEnd) && $cEnd->gt($newEnd)) {
                     $conflict->update(['start_date' => $newEnd->copy()->addDay()]);
                 }
             }
-
-            $this->savePeriodChanges($this->pendingPeriodData);
         });
-
-        $this->isOverlapModalOpen = false;
-        $this->close();
-        session()->flash('message', 'Semana y conflictos ajustados correctamente.');
-    }
-
-    public function cancelOverlap()
-    {
-        $this->isOverlapModalOpen = false;
-        $this->pendingPeriodData = [];
     }
 
     protected function savePeriodChanges($data)
@@ -168,7 +132,6 @@ class PeriodForm extends Component
     public function close()
     {
         $this->isOpen = false;
-        $this->isOverlapModalOpen = false;
         $this->reset(['periodId', 'name', 'startDate', 'endDate', 'pendingPeriodData']);
     }
 
