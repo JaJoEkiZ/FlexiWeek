@@ -99,8 +99,8 @@
                         <tr>
                             <th class="p-4 border-b border-[#333] w-32">Estado</th>
                             <th class="p-4 border-b border-[#333]">Actividad/Tarea</th>
-                            <th class="p-4 border-b border-[#333] w-32 text-center">Hs de trabajo</th>
-                            <th class="p-4 border-b border-[#333] w-32 text-center">Horas Restantes</th>
+                            <th class="p-4 border-b border-[#333] w-32 text-center">Trabajo realizado</th>
+                            <th class="p-4 border-b border-[#333] w-32 text-center">Trabajo restante</th>
                             <th class="p-4 border-b border-[#333] w-48">Control de Tiempo</th>
                             <th class="p-4 border-b border-[#333] w-20">Editar</th>
                         </tr>
@@ -140,23 +140,38 @@
                                     </div>
                                 </td>
                                 <td class="p-4 text-center font-mono text-sm text-[#d4d4d4]">
-                                    @php
-                                        $workedHours = intdiv($task->total_spent, 60);
-                                        $workedMinutes = $task->total_spent % 60;
-                                    @endphp
-                                    {{ $workedHours }}h {{ $workedMinutes }}m
+                                    @if($task->completion_method === 'subtasks')
+                                        <span class="text-[#9cdcfe]">
+                                            {{ $task->subtasks->where('is_completed', true)->count() }} / {{ $task->subtasks->count() }}
+                                        </span>
+                                    @else
+                                        @php
+                                            $workedHours = intdiv($task->total_spent, 60);
+                                            $workedMinutes = $task->total_spent % 60;
+                                        @endphp
+                                        {{ $workedHours }}h {{ $workedMinutes }}m
+                                    @endif
                                 </td>
                                 <td class="p-4 text-center font-mono text-sm">
-                                    @php
-                                        $diffMinutes = $task->estimated_minutes - $task->total_spent;
-                                        $isOvertime = $diffMinutes < 0;
-                                        $absMinutes = abs($diffMinutes);
-                                        $remainingHours = intdiv($absMinutes, 60);
-                                        $remMinutes = $absMinutes % 60;
-                                    @endphp
-                                    <span class="{{ $isOvertime ? 'text-[#f14c4c]' : ($diffMinutes == 0 ? 'text-[#4ec9b0]' : 'text-[#ce9178]') }}">
-                                        {{ $isOvertime ? '-' : '' }}{{ $remainingHours }}h {{ $remMinutes }}m
-                                    </span>
+                                    @if($task->completion_method === 'subtasks')
+                                        @php
+                                            $remainingSubtasks = $task->subtasks->where('is_completed', false)->count();
+                                        @endphp
+                                        <span class="{{ $remainingSubtasks == 0 ? 'text-[#4ec9b0]' : 'text-[#ce9178]' }}">
+                                            {{ $remainingSubtasks }} pendientes
+                                        </span>
+                                    @else
+                                        @php
+                                            $diffMinutes = $task->estimated_minutes - $task->total_spent;
+                                            $isOvertime = $diffMinutes < 0;
+                                            $absMinutes = abs($diffMinutes);
+                                            $remainingHours = intdiv($absMinutes, 60);
+                                            $remMinutes = $absMinutes % 60;
+                                        @endphp
+                                        <span class="{{ $isOvertime ? 'text-[#f14c4c]' : ($diffMinutes == 0 ? 'text-[#4ec9b0]' : 'text-[#ce9178]') }}">
+                                            {{ $isOvertime ? '-' : '' }}{{ $remainingHours }}h {{ $remMinutes }}m
+                                        </span>
+                                    @endif
                                 </td>
                                 <td class="p-4 align-top">
                                     <div class="mb-3">
