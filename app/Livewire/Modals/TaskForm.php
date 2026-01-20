@@ -118,6 +118,22 @@ class TaskForm extends Component
             }
         }
 
+        // Verificar y actualizar estado si es por Subtareas
+        if ($this->completionMethod === 'subtasks' && $task->subtasks()->count() > 0) {
+            $total = $task->subtasks()->count();
+            $completed = $task->subtasks()->where('is_completed', true)->count();
+
+            if ($total === $completed) {
+                $task->update(['status' => TaskStatus::Completed]);
+            } else {
+                // Si estaba completada y agregamos una nueva o desmarcamos, volver a en curso
+                // Podríamos usar InProgress o Pending. Si ya tiene avance, InProgress.
+                if ($task->status === TaskStatus::Completed) {
+                    $task->update(['status' => TaskStatus::InProgress]); // o Pending
+                }
+            }
+        }
+
         $this->isOpen = false;
         $this->dispatch('taskSaved'); // Notify parent to refresh
         session()->flash('message', $message);
