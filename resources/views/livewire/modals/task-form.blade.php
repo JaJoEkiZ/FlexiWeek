@@ -62,9 +62,8 @@
                                     </div>
                                     @endif
 
-                                    @if($completionMethod === 'subtasks')
                                     <div class="space-y-2">
-                                        <label class="block text-xs font-mono text-[#7b7b7b] mb-1">Subtareas</label>
+                                        <label class="block text-xs font-mono text-[#7b7b7b] mb-1">Subtareas (opcional)</label>
                                         @foreach($subtasks as $index => $subtask)
                                             <div class="space-y-1 p-2 bg-[#2d2d2d] rounded border border-[#3c3c3c]">
                                                 <div class="flex gap-2 items-center">
@@ -87,7 +86,6 @@
                                             Agregar Subtarea
                                         </button>
                                     </div>
-                                    @endif
                                 </div>
                             </div>
                         </div>

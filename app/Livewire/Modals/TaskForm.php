@@ -110,23 +110,19 @@ class TaskForm extends Component
             $message = 'Tarea creada correctamente.';
         }
 
-        // Guardar Subtareas
-        if ($this->completionMethod === 'subtasks') {
-            // Opcional: limpiar anteriores si es edición simple (reemplazo total)
-            // Si quieres actualizar existentes, necesitarías ids.
-            // Para "simple", borramos y recreamos:
-            if ($this->taskId) {
-                $task->subtasks()->delete();
-            }
+        // Guardar Subtareas (siempre, independiente del método de progreso)
+        // Para edición: borramos y recreamos
+        if ($this->taskId) {
+            $task->subtasks()->delete();
+        }
 
-            foreach ($this->subtasks as $subtaskData) {
-                if (! empty($subtaskData['title'])) {
-                    $task->subtasks()->create([
-                        'title' => $subtaskData['title'],
-                        'description' => $subtaskData['description'] ?? '',
-                        'is_completed' => $subtaskData['is_completed'] ?? false,
-                    ]);
-                }
+        foreach ($this->subtasks as $subtaskData) {
+            if (! empty($subtaskData['title'])) {
+                $task->subtasks()->create([
+                    'title' => $subtaskData['title'],
+                    'description' => $subtaskData['description'] ?? '',
+                    'is_completed' => $subtaskData['is_completed'] ?? false,
+                ]);
             }
         }
 
