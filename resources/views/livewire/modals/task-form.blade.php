@@ -33,6 +33,12 @@
                                     </div>
 
                                     <div>
+                                        <label for="description" class="block text-xs font-mono text-[#7b7b7b] mb-1">Descripción / Detalles</label>
+                                        <textarea wire:model="description" id="description" rows="3" placeholder="Notas, detalles, contexto..." class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3 placeholder-[#666] resize-none"></textarea>
+                                        @error('description') <span class="text-[#f14c4c] text-xs font-mono mt-1">{{ $message }}</span> @enderror
+                                    </div>
+
+                                    <div>
                                         <label for="completionMethod" class="block text-xs font-mono text-[#7b7b7b] mb-1">Tipo de Tarea</label>
                                         <select wire:model.live="completionMethod" id="completionMethod" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3">
                                             <option value="time">Por Tiempo</option>
@@ -60,16 +66,19 @@
                                     <div class="space-y-2">
                                         <label class="block text-xs font-mono text-[#7b7b7b] mb-1">Subtareas</label>
                                         @foreach($subtasks as $index => $subtask)
-                                            <div class="flex gap-2 items-center">
-                                                <input type="checkbox" wire:model="subtasks.{{ $index }}.is_completed" class="rounded bg-[#3c3c3c] border-[#333] text-[#007fd4] focus:ring-0 focus:ring-offset-0">
-                                                <input type="text" wire:model="subtasks.{{ $index }}.title" placeholder="Título de la subtarea" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3 placeholder-[#666]">
-                                                <button type="button" wire:click="removeSubtask({{ $index }})" class="text-[#f14c4c] hover:text-[#c43e3e]">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                      <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                                    </svg>
-                                                </button>
+                                            <div class="space-y-1 p-2 bg-[#2d2d2d] rounded border border-[#3c3c3c]">
+                                                <div class="flex gap-2 items-center">
+                                                    <input type="checkbox" wire:model="subtasks.{{ $index }}.is_completed" class="rounded bg-[#3c3c3c] border-[#333] text-[#007fd4] focus:ring-0 focus:ring-offset-0">
+                                                    <input type="text" wire:model="subtasks.{{ $index }}.title" placeholder="Título de la subtarea" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3 placeholder-[#666]">
+                                                    <button type="button" wire:click="removeSubtask({{ $index }})" class="text-[#f14c4c] hover:text-[#c43e3e]">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                          <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                                <input type="text" wire:model="subtasks.{{ $index }}.description" placeholder="Detalles de la subtarea (opcional)" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#9d9d9d] focus:border-[#007fd4] focus:ring-[#007fd4] text-xs py-1.5 px-3 placeholder-[#555]">
+                                                @error('subtasks.'.$index.'.title') <span class="text-[#f14c4c] text-xs font-mono mt-1">{{ $message }}</span> @enderror
                                             </div>
-                                            @error('subtasks.'.$index.'.title') <span class="text-[#f14c4c] text-xs font-mono mt-1">{{ $message }}</span> @enderror
                                         @endforeach
                                         <button type="button" wire:click="addSubtask" class="text-xs text-[#007fd4] hover:underline flex items-center gap-1">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">

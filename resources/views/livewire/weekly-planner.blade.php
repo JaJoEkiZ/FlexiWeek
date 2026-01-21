@@ -135,8 +135,16 @@
                                         </button>
                                 </td>
                                 <td class="p-4">
-                                    <div class="font-medium text-[#d4d4d4] group-hover:text-white transition-colors">
-                                        <span class="text-[#569cd6] opacity-50 mr-2"></span>{{ $task->title }}
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-medium text-[#d4d4d4] group-hover:text-white transition-colors">{{ $task->title }}</span>
+                                        @if($task->description || $task->subtasks->where('description', '!=', '')->count() > 0)
+                                            <button 
+                                                wire:click="$dispatch('openTaskDetails', { taskId: {{ $task->id }} })"
+                                                @click.stop
+                                                class="text-[#007fd4] hover:text-white text-xs font-medium transition-colors px-1.5 py-0.5 rounded hover:bg-[#333] border border-[#333]">
+                                                Detalles
+                                            </button>
+                                        @endif
                                     </div>
                                 </td>
                                 <td class="p-4 text-center font-mono text-sm text-[#d4d4d4]">
@@ -250,6 +258,9 @@
 
     <!-- Componente Modal de Periodo -->
     <livewire:modals.period-form />
+
+    <!-- Componente Modal de Detalles -->
+    <livewire:modals.task-details />
 
 
 

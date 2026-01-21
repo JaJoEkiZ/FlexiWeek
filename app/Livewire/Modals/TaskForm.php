@@ -9,6 +9,9 @@ use Livewire\Component;
 
 class TaskForm extends Component
 {
+    // descripcion
+    public $description = '';
+
     public $isOpen = false;
 
     public $taskId = null;
@@ -39,7 +42,7 @@ class TaskForm extends Component
 
     public function openTaskForm($payload = [])
     {
-        $this->reset(['taskId', 'title', 'periodId', 'hours', 'minutes']);
+        $this->reset(['taskId', 'title', 'description', 'periodId', 'hours', 'minutes', 'subtasks', 'completionMethod']);
 
         $this->taskId = $payload['taskId'] ?? null;
         $defaultPeriodId = $payload['periodId'] ?? null;
@@ -48,10 +51,15 @@ class TaskForm extends Component
             $task = Task::findOrFail($this->taskId);
             $this->periodId = $task->period_id;
             $this->title = $task->title;
+            $this->description = $task->description ?? '';
             $this->completionMethod = $task->completion_method ?? 'time';
             $this->subtasks = $task->subtasks()->get()->map(function ($subtask) {
-                return ['title' => $subtask->title, 'is_completed' => (bool) $subtask->is_completed];
-            })->toArray(); // Cargar subtareas
+                return [
+                    'title' => $subtask->title,
+                    'description' => $subtask->description ?? '',
+                    'is_completed' => (bool) $subtask->is_completed,
+                ];
+            })->toArray();
             $this->hours = intdiv($task->estimated_minutes, 60);
             $this->minutes = $task->estimated_minutes % 60;
         } else {
@@ -71,6 +79,7 @@ class TaskForm extends Component
         $this->validate([
             'periodId' => 'required|exists:periods,id',
             'title' => 'required|min:3',
+            'description' => 'nullable|string',
             'hours' => 'required|integer|min:0',
             'minutes' => 'required|integer|min:0|max:59',
             'completionMethod' => 'required|in:time,subtasks',
@@ -84,6 +93,7 @@ class TaskForm extends Component
             $task->update([
                 'period_id' => $this->periodId,
                 'title' => $this->title,
+                'description' => $this->description,
                 'estimated_minutes' => $totalMinutes,
                 'completion_method' => $this->completionMethod,
             ]);
@@ -92,6 +102,7 @@ class TaskForm extends Component
             $task = Task::create([
                 'period_id' => $this->periodId,
                 'title' => $this->title,
+                'description' => $this->description,
                 'estimated_minutes' => $totalMinutes,
                 'status' => TaskStatus::Pending,
                 'completion_method' => $this->completionMethod,
@@ -112,6 +123,7 @@ class TaskForm extends Component
                 if (! empty($subtaskData['title'])) {
                     $task->subtasks()->create([
                         'title' => $subtaskData['title'],
+                        'description' => $subtaskData['description'] ?? '',
                         'is_completed' => $subtaskData['is_completed'] ?? false,
                     ]);
                 }
@@ -141,7 +153,7 @@ class TaskForm extends Component
 
     public function addSubtask()
     {
-        $this->subtasks[] = ['title' => '', 'is_completed' => false];
+        $this->subtasks[] = ['title' => '', 'description' => '', 'is_completed' => false];
     }
 
     public function removeSubtask($index)
