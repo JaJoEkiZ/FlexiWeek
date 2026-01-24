@@ -15,7 +15,7 @@
     </main>
 
     <footer class="bg-[#252526] border-t border-[#333] p-4 text-center text-sm text-[#7b7b7b]">
-        <p>FlexiWeek v1.0.0 - Developed by JaJo EkiZ</p>
+        <p>FlexiWeek v1.0.1 - Developed by JaJo EkiZ</p>
     </footer>
 
 </body>

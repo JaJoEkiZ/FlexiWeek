@@ -1,4 +1,4 @@
-<div x-data="{ sidebarOpen: window.innerWidth >= 768 }" class="flex h-full bg-[#1e1e1e] text-[#d4d4d4] font-sans antialiased relative">
+<div x-data="{ sidebarOpen: window.innerWidth >= 768 }" class="flex h-screen bg-[#1e1e1e] text-[#d4d4d4] font-sans antialiased relative">
     
     <!-- Mobile Overlay -->
     <div x-show="sidebarOpen" 
@@ -18,80 +18,12 @@
     </div>
 
     <!-- Main Content -->
-    <div :class="sidebarOpen ? 'md:ml-64' : ''" class="flex-1 p-8 overflow-y-auto bg-[#1e1e1e] custom-scrollbar w-full transition-all duration-300 ease-in-out">
-        <!-- Header Trigger -->
-        <!-- Header -->
-        <div class="mb-6 flex items-center justify-between">
-            <!-- Left: Sidebar Toggle -->
-            <div class="flex items-center">
-                <button @click="sidebarOpen = !sidebarOpen" class="text-[#d4d4d4] hover:text-white p-2 -ml-2 rounded hover:bg-[#333] transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                </button>
-                <span class="ml-2 text-sm font-medium text-[#7b7b7b]">Semanas</span>
-            </div>
-
-            <!-- Right: User Dropdown -->
-            <div x-data="{ open: false }" class="relative">
-                <button @click="open = !open" class="flex items-center gap-2 text-[#d4d4d4] hover:text-white transition-colors focus:outline-none bg-[#252526] hover:bg-[#333] px-3 py-1.5 rounded border border-[#333]">
-                    <div class="h-6 w-6 rounded-full bg-[#007fd4] flex items-center justify-center text-xs font-bold text-white">
-                        {{ substr(Auth::user()->name, 0, 1) }}
-                    </div>
-                    <span class="text-sm font-medium">{{ Auth::user()->name }}</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform duration-200" :class="{'rotate-180': open}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                </button>
-
-                <!-- Dropdown Menu -->
-                <div x-show="open" 
-                     @click.away="open = false"
-                     x-transition:enter="transition ease-out duration-100"
-                     x-transition:enter-start="transform opacity-0 scale-95"
-                     x-transition:enter-end="transform opacity-100 scale-100"
-                     x-transition:leave="transition ease-in duration-75"
-                     x-transition:leave-start="transform opacity-100 scale-100"
-                     x-transition:leave-end="transform opacity-0 scale-95"
-                     class="absolute right-0 mt-2 w-48 bg-[#252526] rounded-md shadow-xl py-1 border border-[#333] z-50">
-                    
-                    <a href="{{ route('profile.edit') }}" class="block px-4 py-2 text-sm text-[#d4d4d4] hover:bg-[#007fd4] hover:text-white transition-colors">
-                        Perfil
-                    </a>
-
-                    <div class="border-t border-[#333] my-1"></div>
-
-                    <form method="POST" action="{{ route('logout') }}">
-                        @csrf
-                        <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-[#d4d4d4] hover:bg-[#c53030] hover:text-white transition-colors">
-                            Cerrar Sesión
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
+    <div :class="sidebarOpen ? 'md:ml-64' : ''" class="flex-1 overflow-y-auto bg-[#1e1e1e] custom-scrollbar w-full transition-all duration-300 ease-in-out">
+        <!-- Header eliminado, movido a TaskNavbar -->
         @if($currentPeriod)
-            <div class="flex justify-between items-center mb-8 border-b border-[#333] pb-6">
-                <div>
-                    <h1 class="text-3xl font-light text-white mb-1"><span class="text-[#007fd4]">{{ $currentPeriod->name }}</span></h1>
-                    <p class="text-[#7b7b7b] text-sm font-mono">
-                        <span class="text-[#ce9178]">Inicia</span>: "{{ \Carbon\Carbon::parse($currentPeriod->start_date)->format('Y-m-d') }}"
-                        <span class="mx-2">|</span>
-                        <span class="text-[#ce9178]">Termina</span>: "{{ \Carbon\Carbon::parse($currentPeriod->end_date)->format('Y-m-d') }}"
-                    </p>
-                </div>
-                <div class="flex items-center gap-4">
-                     <button wire:click="openTaskForm" class="bg-[#007fd4] hover:bg-[#006cb5] text-white px-3 py-1.5 rounded-sm text-sm font-medium transition-colors flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Tarea
-                    </button>
-                    <div class="bg-[#252526] border border-[#333] px-4 py-2 rounded text-xs font-mono text-[#4ec9b0]">
-                        Tareas: <span class="text-[#b5cea8]">{{ $currentPeriod->tasks->count() }}</span>
-                    </div>
-                </div>
-            </div>
+            <livewire:components.task-navbar :selectedPeriodId="$currentPeriod->id" wire:key="navbar-{{ $currentPeriod->id }}" />
+            
+            <div class="p-8">
 
             <div class="bg-[#252526] rounded-md shadow-xl overflow-hidden border border-[#333]">
                 <table class="w-full text-left border-collapse">
@@ -106,7 +38,7 @@
                         </tr>
                     </thead>
                     <tbody id="tasks-tbody" class="divide-y divide-[#333]">
-                        @forelse($currentPeriod->tasks as $task)
+                        @forelse($tasks as $task)
                             <tr 
                                 data-task-id="{{ $task->id }}"
                                 wire:key="task-{{ $task->id }}" 
@@ -261,6 +193,10 @@
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+            <div class="mt-4">
+                {{ $tasks->links() }}
+            </div>
             </div>
         @else
             <div class="flex flex-col items-center justify-center h-full text-[#7b7b7b]">

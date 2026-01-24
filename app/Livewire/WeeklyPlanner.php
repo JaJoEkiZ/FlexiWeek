@@ -7,9 +7,14 @@ use App\Models\Period;
 use App\Models\Task;
 use App\Models\TaskTimeLog;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class WeeklyPlanner extends Component
 {
+    use WithPagination;
+
+    protected $paginationTheme = 'tailwind';
+
     public $selectedPeriodId;
 
     public $minutesInput = [];
@@ -146,16 +151,23 @@ class WeeklyPlanner extends Component
     public function render()
     {
         $currentPeriod = null;
+        $tasks = collect();
+
         if ($this->selectedPeriodId) {
-            $currentPeriod = Period::with(['tasks.subtasks', 'tasks' => function ($query) {
-                $query->orderBy('sort_order', 'asc');
-            }])->find($this->selectedPeriodId);
+            $currentPeriod = Period::find($this->selectedPeriodId);
+
+            // Paginación de tareas (10 por página)
+            $tasks = Task::where('period_id', $this->selectedPeriodId)
+                ->with('subtasks')
+                ->orderBy('sort_order', 'asc')
+                ->paginate(10);
         }
 
-        $periods = Period::where('user_id', auth()->id())->orderBy('start_date', 'desc')->get(); // Still used for TaskForm dropdown
+        $periods = Period::where('user_id', auth()->id())->orderBy('start_date', 'desc')->get();
 
         return view('livewire.weekly-planner', [
             'currentPeriod' => $currentPeriod,
+            'tasks' => $tasks,
             'periods' => $periods,
         ]);
     }
