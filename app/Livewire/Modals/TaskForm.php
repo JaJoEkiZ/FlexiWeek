@@ -88,6 +88,20 @@ class TaskForm extends Component
             'minutes' => 'required|integer|min:0|max:59',
             'completionMethod' => 'required|in:time,subtasks',
             'subtasks.*.title' => 'required_if:completionMethod,subtasks|string|max:255',
+        ], [
+            'periodId.required' => 'Debes seleccionar una semana.',
+            'periodId.exists' => 'La semana seleccionada no es válida.',
+            'title.required' => 'El título de la tarea es obligatorio.',
+            'title.min' => 'El título debe tener al menos 3 caracteres.',
+            'hours.required' => 'Las horas son obligatorias.',
+            'hours.integer' => 'Las horas deben ser un número entero.',
+            'hours.min' => 'Las horas no pueden ser negativas.',
+            'minutes.required' => 'Los minutos son obligatorios.',
+            'minutes.integer' => 'Los minutos deben ser un número entero.',
+            'minutes.min' => 'Los minutos no pueden ser negativos.',
+            'minutes.max' => 'Los minutos no pueden exceder 59.',
+            'subtasks.*.title.required_if' => 'El título de la subtarea es obligatorio.',
+            'subtasks.*.title.max' => 'El título de la subtarea es muy largo.',
         ]);
 
         // Validación adicional: si es por subtareas, debe tener al menos 1

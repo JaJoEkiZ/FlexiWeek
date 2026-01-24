@@ -48,6 +48,13 @@ class PeriodForm extends Component
             'name' => 'nullable|string|max:255',
             'startDate' => 'required|date',
             'endDate' => 'required|date|after_or_equal:startDate',
+        ], [
+            'name.max' => 'El nombre es demasiado largo.',
+            'startDate.required' => 'La fecha de inicio es obligatoria.',
+            'startDate.date' => 'La fecha de inicio no es válida.',
+            'endDate.required' => 'La fecha de fin es obligatoria.',
+            'endDate.date' => 'La fecha de fin no es válida.',
+            'endDate.after_or_equal' => 'La fecha de fin debe ser igual o posterior a la fecha de inicio.',
         ]);
 
         Log::info('PeriodForm save called', [

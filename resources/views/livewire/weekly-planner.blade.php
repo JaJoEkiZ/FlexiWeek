@@ -18,12 +18,13 @@
     </div>
 
     <!-- Main Content -->
-    <div :class="sidebarOpen ? 'md:ml-64' : ''" class="flex-1 overflow-y-auto bg-[#1e1e1e] custom-scrollbar w-full transition-all duration-300 ease-in-out">
-        <!-- Header eliminado, movido a TaskNavbar -->
+    <div :class="sidebarOpen ? 'md:ml-64' : ''" class="flex-1 flex flex-col h-full bg-[#1e1e1e] w-full transition-all duration-300 ease-in-out overflow-hidden">
+        <!-- Navbar (Fixed) -->
         @if($currentPeriod)
             <livewire:components.task-navbar :selectedPeriodId="$currentPeriod->id" wire:key="navbar-{{ $currentPeriod->id }}" />
             
-            <div class="p-8">
+            <!-- Scrollable Area -->
+            <div class="flex-1 overflow-y-auto custom-scrollbar p-8">
 
             <div class="bg-[#252526] rounded-md shadow-xl overflow-hidden border border-[#333]">
                 <table class="w-full text-left border-collapse">
