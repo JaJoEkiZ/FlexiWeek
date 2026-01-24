@@ -60,10 +60,27 @@
                                             @error('minutes') <span class="text-[#f14c4c] text-xs font-mono mt-1">{{ $message }}</span> @enderror
                                         </div>
                                     </div>
+                                    <div class="text-xs text-[#7b7b7b] -mt-2">
+                                        <span class="text-[#f14c4c]">*</span> Mínimo 10 minutos requeridos
+                                    </div>
                                     @endif
 
                                     <div class="space-y-2">
-                                        <label class="block text-xs font-mono text-[#7b7b7b] mb-1">Subtareas (opcional)</label>
+                                        <label class="block text-xs font-mono text-[#7b7b7b] mb-1">Subtareas @if($completionMethod === 'subtasks')<span class="text-[#f14c4c]">*</span>@endif</label>
+                                        
+                                        @if($completionMethod === 'subtasks' && empty($subtasks))
+                                            <div class="p-3 bg-[#2d2d2d] rounded border border-[#f14c4c]/30 text-xs text-[#f14c4c]">
+                                                <p class="flex items-start gap-2">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mt-0.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                                    </svg>
+                                                    <span>
+                                                        <strong>Requerido:</strong> Debes agregar al menos 1 subtarea para poder usar el control por subtareas.
+                                                    </span>
+                                                </p>
+                                            </div>
+                                        @endif
+                                        
                                         @foreach($subtasks as $index => $subtask)
                                             <div class="space-y-1 p-2 bg-[#2d2d2d] rounded border border-[#3c3c3c]">
                                                 <div class="flex gap-2 items-center">
@@ -85,6 +102,7 @@
                                             </svg>
                                             Agregar Subtarea
                                         </button>
+                                        @error('subtasks') <span class="text-[#f14c4c] text-xs font-mono mt-1 block">{{ $message }}</span> @enderror
                                     </div>
                                 </div>
                             </div>

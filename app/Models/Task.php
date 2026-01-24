@@ -45,6 +45,7 @@ class Task extends Model
     {
         if ($this->completion_method === 'subtasks') {
             $totalSubtasks = $this->subtasks->count();
+
             if ($totalSubtasks === 0) {
                 return 0;
             }

@@ -86,7 +86,21 @@ class TaskForm extends Component
             'subtasks.*.title' => 'required_if:completionMethod,subtasks|string|max:255',
         ]);
 
+        // Validación adicional: si es por subtareas, debe tener al menos 1
+        if ($this->completionMethod === 'subtasks' && empty($this->subtasks)) {
+            $this->addError('subtasks', 'Debes agregar al menos 1 subtarea para usar el control por subtareas.');
+
+            return;
+        }
+
         $totalMinutes = ($this->hours * 60) + $this->minutes;
+
+        // Validación adicional: si es por tiempo, debe tener al menos 10 minutos
+        if ($this->completionMethod === 'time' && $totalMinutes < 10) {
+            $this->addError('minutes', 'Las tareas por tiempo deben tener al menos 10 minutos.');
+
+            return;
+        }
 
         if ($this->taskId) {
             $task = Task::findOrFail($this->taskId);
