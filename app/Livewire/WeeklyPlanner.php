@@ -35,6 +35,7 @@ class WeeklyPlanner extends Component
     public function selectPeriod($periodId)
     {
         $this->selectedPeriodId = $periodId;
+        $this->resetPage();
     }
 
     public function cycleStatus($taskId)
