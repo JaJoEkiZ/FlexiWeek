@@ -197,7 +197,16 @@
                                                     {{ $task->subtasks->where('is_completed', true)->count() }} / {{ $task->subtasks->count() }} Subtasks
                                                 </span>
                                             @else
-                                                <span class="text-[#9cdcfe]">{{ $task->total_spent }}m <span class="text-[#6a9955]">// {{ $task->estimated_minutes }}m</span></span>
+                                                @php
+                                                    $spentHours = intdiv($task->total_spent, 60);
+                                                    $spentMins = $task->total_spent % 60;
+                                                    $estHours = intdiv($task->estimated_minutes, 60);
+                                                    $estMins = $task->estimated_minutes % 60;
+                                                @endphp
+                                                <span class="text-[#9cdcfe]">
+                                                    {{ $spentHours }}h {{ $spentMins }}m 
+                                                    <span class="text-[#6a9955]">// {{ $estHours }}h {{ $estMins }}m</span>
+                                                </span>
                                             @endif
                                             
                                             <span class="{{ $task->progress >= 100 ? 'text-[#4ec9b0]' : 'text-[#7b7b7b]' }}">
