@@ -107,6 +107,32 @@ class WeeklyPlanner extends Component
         }
     }
 
+    public function moveTaskToPeriod($taskId, $newPeriodId)
+    {
+        $task = Task::findOrFail($taskId);
+        $oldPeriodId = $task->period_id;
+
+        // Obtener el orden máximo en la nueva semana
+        $maxOrder = Task::where('period_id', $newPeriodId)->max('sort_order') ?? 0;
+
+        // Mover la tarea
+        $task->update([
+            'period_id' => $newPeriodId,
+            'sort_order' => $maxOrder + 1,
+        ]);
+
+        // Reordenar tareas en la semana original
+        $this->reorderPeriodTasks($oldPeriodId);
+    }
+
+    private function reorderPeriodTasks($periodId)
+    {
+        $tasks = Task::where('period_id', $periodId)->orderBy('sort_order')->get();
+        foreach ($tasks as $index => $task) {
+            $task->update(['sort_order' => $index + 1]);
+        }
+    }
+
     public function openTaskForm($taskId = null)
     {
         $this->dispatch('openTaskForm', ['taskId' => $taskId, 'periodId' => $this->selectedPeriodId]);

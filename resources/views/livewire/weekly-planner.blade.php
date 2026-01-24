@@ -285,6 +285,72 @@
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background-color: #4f4f4f;
         }
+
+        /* Ghost durante drag - semi-transparente */
+        .sortable-ghost {
+            opacity: 0.5 !important;
+            background-color: #1a1a1a !important;
+        }
+
+        /* Transición suave para el reordenamiento */
+        #tasks-tbody tr {
+            transition: transform 0.3s ease, background-color 0.3s ease !important;
+        }
+
+        /* Elemento siendo arrastrado */
+        .sortable-drag {
+            opacity: 0.8 !important;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        /* Highlight temporal cuando se suelta */
+        @keyframes dropHighlight {
+            0% { background-color: rgba(0, 127, 212, 0.2); }
+            100% { background-color: transparent; }
+        }
+
+        /* Ocultar ghost dentro del sidebar para evitar deformación en altura */
+        .period-drop-zone > tr,
+        .period-drop-zone > .sortable-ghost,
+        .period-drop-zone > .sortable-fallback {
+            display: none !important;
+            height: 0 !important;
+            overflow: hidden !important;
+        }
+
+        /* Animación de pulso mientras arrastra sobre período */
+        @keyframes readyToReceive {
+            0%, 100% { 
+                background-color: rgba(34, 197, 94, 0.1);
+                border-left-color: #22c55e;
+            }
+            50% { 
+                background-color: rgba(34, 197, 94, 0.25);
+                border-left-color: #4ade80;
+            }
+        }
+
+        /* Highlight VERDE pulsante cuando arrastra tarea sobre período */
+        .period-drop-zone.drag-over-zone {
+            animation: readyToReceive 0.8s ease-in-out infinite !important;
+            border-left-width: 3px !important;
+            transform: scale(1.05) !important;
+            transform-origin: center !important;
+            transition: transform 0.2s ease !important;
+            z-index: 10 !important;
+            position: relative !important;
+        }
+
+        /* Animación flash cuando recibe la tarea */
+        @keyframes receiveTask {
+            0% { background-color: rgba(34, 197, 94, 0.4); }
+            50% { background-color: rgba(34, 197, 94, 0.2); }
+            100% { background-color: transparent; }
+        }
+
+        .period-drop-zone.task-received {
+            animation: receiveTask 0.6s ease-out forwards;
+        }
     </style>
 
     <!-- SortableJS CDN -->
@@ -301,19 +367,106 @@
         
         function initSortable() {
             const tbody = document.getElementById('tasks-tbody');
+            const periodDropZones = document.querySelectorAll('.period-drop-zone');
+            
             if (!tbody) return;
             
+            // Sortable para la tabla principal
             new Sortable(tbody, {
-                animation: 150,
+                group: 'tasks',  // Mismo grupo para permitir drag entre elementos
+                animation: 300,  // Animación más lenta y fluida
                 handle: '.drag-handle',
-                ghostClass: 'bg-[#007fd4]/20',
-                dragClass: 'opacity-50',
+                ghostClass: 'sortable-ghost',
+                dragClass: 'sortable-drag',
+                chosenClass: 'sortable-chosen',
+                swap: false,  // No intercambiar elementos
+                swapThreshold: 0.65,
+                invertSwap: false,
+                direction: 'vertical',
                 onEnd: function(evt) {
-                    const orderedIds = Array.from(tbody.querySelectorAll('tr[data-task-id]'))
-                        .map(row => parseInt(row.dataset.taskId));
-                    
-                    @this.call('updateTaskOrder', orderedIds);
+                    // Solo reordenar si se quedó en la misma tabla
+                    if (evt.to === tbody) {
+                        const orderedIds = Array.from(tbody.querySelectorAll('tr[data-task-id]'))
+                            .map(row => parseInt(row.dataset.taskId));
+                        
+                        @this.call('updateTaskOrder', orderedIds);
+                    }
                 }
+            });
+            
+            // Sortable para cada semana del sidebar
+            periodDropZones.forEach(function(zone) {
+                new Sortable(zone, {
+                    group: {
+                        name: 'tasks',
+                        put: true,   // Puede recibir tareas
+                        pull: false  // No se pueden sacar elementos de aquí
+                    },
+                    sort: false,  // No permitir reordenar dentro del sidebar
+                    animation: 150,
+                    onMove: function(evt) {
+                        // Limpiar todas las clases primero
+                        periodDropZones.forEach(z => z.classList.remove('drag-over-zone'));
+                        // Agregar clase cuando está sobre este drop zone
+                        if (evt.to) {
+                            evt.to.classList.add('drag-over-zone');
+                        }
+                        return true;
+                    },
+                    onAdd: function(evt) {
+                        // Remover clase de highlight de todos los períodos
+                        periodDropZones.forEach(z => z.classList.remove('drag-over-zone'));
+                        
+                        // Agregar animación de "recibido"
+                        evt.to.classList.add('task-received');
+                        setTimeout(() => {
+                            evt.to.classList.remove('task-received');
+                        }, 700);
+                        
+                        const taskId = parseInt(evt.item.dataset.taskId);
+                        const newPeriodId = parseInt(evt.to.dataset.periodId);
+                        
+                        // Mover la tarea al nuevo período
+                        @this.call('moveTaskToPeriod', taskId, newPeriodId);
+                        
+                        // Remover el elemento del DOM del sidebar
+                        evt.item.remove();
+                    }
+                });
+            });
+            
+            // Limpiar highlight cuando termina cualquier drag
+            document.addEventListener('mouseup', function() {
+                periodDropZones.forEach(z => z.classList.remove('drag-over-zone'));
+            });
+            
+            // Eventos nativos de drag para highlight visual
+            periodDropZones.forEach(function(zone) {
+                zone.addEventListener('dragenter', function(e) {
+                    e.preventDefault();
+                    // Limpiar todos primero
+                    periodDropZones.forEach(z => z.classList.remove('drag-over-zone'));
+                    // Agregar a este
+                    this.classList.add('drag-over-zone');
+                });
+                
+                zone.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    // Mantener la clase mientras está encima
+                    if (!this.classList.contains('drag-over-zone')) {
+                        periodDropZones.forEach(z => z.classList.remove('drag-over-zone'));
+                        this.classList.add('drag-over-zone');
+                    }
+                });
+                
+                zone.addEventListener('dragleave', function(e) {
+                    // Solo remover si realmente salió del elemento
+                    const rect = this.getBoundingClientRect();
+                    if (e.clientX < rect.left || e.clientX >= rect.right || 
+                        e.clientY < rect.top || e.clientY >= rect.bottom) {
+                        this.classList.remove('drag-over-zone');
+                    }
+                });
             });
         }
     </script>

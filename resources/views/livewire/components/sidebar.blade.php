@@ -18,10 +18,11 @@
     <!-- Period List -->
     <div class="space-y-1 flex-1 overflow-y-auto custom-scrollbar">
         @foreach($activePeriods as $period)
-            <div class="flex items-center group/item w-full px-3 py-2 rounded-sm transition-all border-l-2 text-sm
+            <div class="period-drop-zone flex items-center group/item w-full px-3 py-2 rounded-sm transition-all border-l-2 text-sm
                 {{ $selectedPeriodId == $period->id 
                     ? 'bg-[#37373d] border-[#007fd4] text-white' 
-                    : 'border-transparent text-[#969696] hover:bg-[#2a2d2e] hover:text-[#d4d4d4]' }}">
+                    : 'border-transparent text-[#969696] hover:bg-[#2a2d2e] hover:text-[#d4d4d4]' }}"
+                data-period-id="{{ $period->id }}">
                 
                 <button wire:click="selectPeriod({{ $period->id }})" 
                         @click="if(window.innerWidth < 768) sidebarOpen = false"
@@ -54,10 +55,11 @@
                 @if($showPastWeeks)
                     <div class="mt-2 space-y-1 pl-2 border-l border-[#333] ml-3 transition-all">
                         @foreach($pastPeriods as $period)
-                            <div class="flex items-center group/item w-full px-3 py-2 rounded-sm transition-all text-sm
+                            <div class="period-drop-zone flex items-center group/item w-full px-3 py-2 rounded-sm transition-all text-sm
                                 {{ $selectedPeriodId == $period->id 
                                     ? 'bg-[#37373d] text-white font-medium' 
-                                    : 'text-[#969696] hover:bg-[#2a2d2e] hover:text-[#d4d4d4]' }}">
+                                    : 'text-[#969696] hover:bg-[#2a2d2e] hover:text-[#d4d4d4]' }}"
+                                data-period-id="{{ $period->id }}">
                                 
                                 <button wire:click="selectPeriod({{ $period->id }})" 
                                         @click="if(window.innerWidth < 768) sidebarOpen = false"
