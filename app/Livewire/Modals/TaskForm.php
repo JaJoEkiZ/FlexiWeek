@@ -76,6 +76,10 @@ class TaskForm extends Component
 
     public function save()
     {
+        // Convertir a enteros para ignorar ceros a la izquierda
+        $this->hours = (int) $this->hours;
+        $this->minutes = (int) $this->minutes;
+
         $this->validate([
             'periodId' => 'required|exists:periods,id',
             'title' => 'required|min:3',

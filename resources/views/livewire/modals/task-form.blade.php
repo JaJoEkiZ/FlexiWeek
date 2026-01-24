@@ -51,12 +51,29 @@
                                     <div class="grid grid-cols-2 gap-4">
                                         <div>
                                             <label for="hours" class="block text-xs font-mono text-[#7b7b7b] mb-1">Horas</label>
-                                            <input type="number" wire:model="hours" x-on:keydown.enter.prevent="$wire.save()" id="hours" min="0" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3 placeholder-[#666]">
+                                            <input type="number" 
+                                                   wire:model="hours" 
+                                                   x-on:keydown.enter.prevent="$wire.save()" 
+                                                   x-on:focus="$el.select()"
+                                                   id="hours" 
+                                                   min="0" 
+                                                   pattern="[0-9]*"
+                                                   inputmode="numeric"
+                                                   class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3 placeholder-[#666]">
                                             @error('hours') <span class="text-[#f14c4c] text-xs font-mono mt-1">{{ $message }}</span> @enderror
                                         </div>
                                         <div>
                                             <label for="minutes" class="block text-xs font-mono text-[#7b7b7b] mb-1">Minutos</label>
-                                            <input type="number" wire:model="minutes" x-on:keydown.enter.prevent="$wire.save()" id="minutes" min="0" max="59" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3 placeholder-[#666]">
+                                            <input type="number" 
+                                                   wire:model="minutes" 
+                                                   x-on:keydown.enter.prevent="$wire.save()" 
+                                                   x-on:focus="$el.select()"
+                                                   id="minutes" 
+                                                   min="0" 
+                                                   max="59"
+                                                   pattern="[0-9]*"
+                                                   inputmode="numeric"
+                                                   class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3 placeholder-[#666]">
                                             @error('minutes') <span class="text-[#f14c4c] text-xs font-mono mt-1">{{ $message }}</span> @enderror
                                         </div>
                                     </div>
