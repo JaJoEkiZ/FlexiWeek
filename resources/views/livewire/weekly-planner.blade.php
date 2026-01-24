@@ -1,4 +1,4 @@
-<div x-data="{ sidebarOpen: window.innerWidth >= 768 }" class="flex h-screen bg-[#1e1e1e] text-[#d4d4d4] font-sans antialiased relative">
+<div x-data="{ sidebarOpen: window.innerWidth >= 768 }" class="flex h-full bg-[#1e1e1e] text-[#d4d4d4] font-sans antialiased relative">
     
     <!-- Mobile Overlay -->
     <div x-show="sidebarOpen" 

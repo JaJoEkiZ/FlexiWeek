@@ -8,9 +8,15 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-[#1e1e1e] text-[#d4d4d4] font-sans antialiased">
+<body class="bg-[#1e1e1e] text-[#d4d4d4] font-sans antialiased min-h-screen flex flex-col">
     
-    {{ $slot }}
+    <main class="flex-1">
+        {{ $slot }}
+    </main>
+
+    <footer class="bg-[#252526] border-t border-[#333] p-4 text-center text-sm text-[#7b7b7b]">
+        <p>FlexiWeek v1.0.0 - Developed by JaJo EkiZ</p>
+    </footer>
 
 </body>
 </html>
