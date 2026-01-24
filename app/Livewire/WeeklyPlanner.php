@@ -83,7 +83,29 @@ class WeeklyPlanner extends Component
         }
     }
 
-    protected $listeners = ['taskSaved' => '$refresh', 'periodSaved' => '$refresh', 'periodSelected' => 'selectPeriod'];
+    protected $listeners = [
+        'taskSaved' => 'taskSaved',
+        'periodSaved' => '$refresh',
+        'periodSelected' => 'selectPeriod',
+    ];
+
+    public function taskSaved()
+    {
+        // Asignar orden a tareas sin orden
+        Task::whereNull('sort_order')->orWhere('sort_order', 0)->each(function ($task) {
+            $maxOrder = Task::where('period_id', $task->period_id)->max('sort_order') ?? 0;
+            $task->update(['sort_order' => $maxOrder + 1]);
+        });
+
+        $this->dispatch('$refresh');
+    }
+
+    public function updateTaskOrder($orderedIds)
+    {
+        foreach ($orderedIds as $index => $taskId) {
+            Task::where('id', $taskId)->update(['sort_order' => $index + 1]);
+        }
+    }
 
     public function openTaskForm($taskId = null)
     {
@@ -100,8 +122,7 @@ class WeeklyPlanner extends Component
         $currentPeriod = null;
         if ($this->selectedPeriodId) {
             $currentPeriod = Period::with(['tasks.subtasks', 'tasks' => function ($query) {
-                // ... (ordering logic remains same if complicated, or simplified)
-
+                $query->orderBy('sort_order', 'asc');
             }])->find($this->selectedPeriodId);
         }
 

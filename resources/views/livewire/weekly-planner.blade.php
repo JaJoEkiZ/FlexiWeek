@@ -105,14 +105,21 @@
                             <th class="p-4 border-b border-[#333] w-20">Editar</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-[#333]">
+                    <tbody id="tasks-tbody" class="divide-y divide-[#333]">
                         @forelse($currentPeriod->tasks as $task)
                             <tr 
+                                data-task-id="{{ $task->id }}"
                                 wire:key="task-{{ $task->id }}" 
                                 wire:click="openTaskForm({{ $task->id }})"
                                 class="hover:bg-[#2a2d2e] transition-colors group cursor-pointer"
                             >
                                 <td class="p-4">
+                                    <div class="flex items-center gap-2">
+                                        <div class="drag-handle cursor-grab active:cursor-grabbing text-[#7b7b7b] hover:text-[#d4d4d4] transition-colors" @click.stop>
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                <path d="M7 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 2zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 14zm6-8a2 2 0 1 0-.001-4.001A2 2 0 0 0 13 6zm0 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 14z"/>
+                                            </svg>
+                                        </div>
                                         <button 
                                                 wire:click="cycleStatus({{ $task->id }})"
                                                 @click.stop
@@ -133,6 +140,7 @@
 
                                                 {{ $task->status->label() }}
                                         </button>
+                                    </div>
                                 </td>
                                 <td class="p-4">
                                     <div class="flex items-center gap-2">
@@ -278,4 +286,35 @@
             background-color: #4f4f4f;
         }
     </style>
+
+    <!-- SortableJS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
+    <script>
+        document.addEventListener('livewire:navigated', function() {
+            initSortable();
+        });
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            initSortable();
+        });
+        
+        function initSortable() {
+            const tbody = document.getElementById('tasks-tbody');
+            if (!tbody) return;
+            
+            new Sortable(tbody, {
+                animation: 150,
+                handle: '.drag-handle',
+                ghostClass: 'bg-[#007fd4]/20',
+                dragClass: 'opacity-50',
+                onEnd: function(evt) {
+                    const orderedIds = Array.from(tbody.querySelectorAll('tr[data-task-id]'))
+                        .map(row => parseInt(row.dataset.taskId));
+                    
+                    @this.call('updateTaskOrder', orderedIds);
+                }
+            });
+        }
+    </script>
 </div>
