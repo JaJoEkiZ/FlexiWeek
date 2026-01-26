@@ -14,6 +14,10 @@ new class extends Component
 
     public string $email = '';
 
+    public string $timezone = '';
+
+    public array $timezones = [];
+
     /**
      * Mount the component.
      */
@@ -21,6 +25,13 @@ new class extends Component
     {
         $this->name = Auth::user()->name;
         $this->email = Auth::user()->email;
+        $this->timezone = Auth::user()->timezone ?? 'America/Argentina/Buenos_Aires';
+
+        // Agrupar timezones por región para mejor UX
+        $allTimezones = timezone_identifiers_list();
+        $this->timezones = collect($allTimezones)->groupBy(function ($tz) {
+            return explode('/', $tz)[0] ?? 'Otros';
+        })->toArray();
     }
 
     /**
@@ -41,6 +52,20 @@ new class extends Component
         $user->save();
 
         $this->dispatch('profile-updated', name: $user->name);
+    }
+
+    /**
+     * Update the timezone for the currently authenticated user.
+     */
+    public function updateTimezone(): void
+    {
+        $validated = $this->validate([
+            'timezone' => 'required|timezone',
+        ]);
+
+        Auth::user()->update($validated);
+
+        $this->dispatch('timezone-updated');
     }
 
     /**
@@ -105,7 +130,40 @@ new class extends Component
                 </x-action-message>
             </div>
         </form>
+    </x-settings.layout>
 
+    <x-settings.layout :heading="__('Zona Horaria')" :subheading="__('Selecciona tu zona horaria preferida para visualizar fechas y horas')" class="mt-8">
+        <form wire:submit="updateTimezone" class="my-6 w-full space-y-6">
+            <div>
+                <flux:select wire:model="timezone" :label="__('Zona Horaria')" required>
+                    @foreach($timezones as $region => $tzList)
+                        <optgroup label="{{ $region }}">
+                            @foreach($tzList as $tz)
+                                <option value="{{ $tz }}">{{ str_replace('_', ' ', $tz) }}</option>
+                            @endforeach
+                        </optgroup>
+                    @endforeach
+                </flux:select>
+                @error('timezone')
+                    <flux:error>{{ $message }}</flux:error>
+                @enderror
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div class="flex items-center justify-end">
+                    <flux:button variant="primary" type="submit" class="w-full" data-test="update-timezone-button">
+                        {{ __('Actualizar Zona Horaria') }}
+                    </flux:button>
+                </div>
+
+                <x-action-message class="me-3" on="timezone-updated">
+                    {{ __('Zona horaria actualizada.') }}
+                </x-action-message>
+            </div>
+        </form>
+    </x-settings.layout>
+
+    <x-settings.layout :heading="__('Eliminar Cuenta')" :subheading="__('Esta acción es irreversible')">
         <livewire:settings.delete-user-form />
     </x-settings.layout>
 </section>
