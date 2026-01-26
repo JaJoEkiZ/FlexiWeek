@@ -32,6 +32,7 @@
                         <tr>
                             <th class="p-4 border-b border-[#333] w-32">Estado</th>
                             <th class="p-4 border-b border-[#333]">Actividad/Tarea</th>
+                            <th class="p-4 border-b border-[#333] w-40 text-left">Asignar a</th>
                             <th class="p-4 border-b border-[#333] w-32 text-center">Trabajo realizado</th>
                             <th class="p-4 border-b border-[#333] w-32 text-center">Trabajo restante</th>
                             <th class="p-4 border-b border-[#333] w-48">Control de Tiempo</th>
@@ -78,25 +79,43 @@
                                 <td class="p-4">
                                     <div class="flex items-center gap-2">
                                         <span class="font-medium text-[#d4d4d4] group-hover:text-white transition-colors">{{ $task->title }}</span>
-                                        @if($task->description || $task->subtasks->where('description', '!=', '')->count() > 0)
-                                            <button 
-                                                wire:click="$dispatch('openTaskDetails', { taskId: {{ $task->id }} })"
-                                                @click.stop
-                                                class="text-[#007fd4] hover:text-white text-xs font-medium transition-colors px-1.5 py-0.5 rounded hover:bg-[#333] border border-[#333]">
-                                                Detalles
-                                            </button>
-                                        @endif
+                                        <button 
+                                            wire:click="$dispatch('openTaskDetails', { taskId: {{ $task->id }} })"
+                                            @click.stop
+                                            class="text-[#007fd4] hover:text-white text-xs font-medium transition-colors px-1.5 py-0.5 rounded hover:bg-[#333] border border-[#333]">
+                                            Detalles
+                                        </button>
                                     </div>
+                                </td>
+                                <td class="p-4 text-left" @click.stop>
+                                    @if($task->subtasks->count() > 0)
+                                        <select wire:model="selectedSubtask.{{ $task->id }}" 
+                                                class="max-w-xs px-2 py-1.5 text-xs bg-[#3c3c3c] border border-[#333] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] focus:outline-none">
+                                            <option value="">-- Tarea principal --</option>
+                                            @foreach($task->subtasks as $subtask)
+                                                <option value="{{ $subtask->id }}">{{ $subtask->title }}</option>
+                                            @endforeach
+                                        </select>
+                                    @else
+                                        <span class="text-[#7b7b7b] text-xs italic">Sin subtareas</span>
+                                    @endif
                                 </td>
                                 <td class="p-4 text-center font-mono text-sm text-[#d4d4d4]">
                                     @if($task->completion_method === 'subtasks')
-                                        <span class="text-[#9cdcfe]">
-                                            {{ $task->subtasks->where('is_completed', true)->count() }} / {{ $task->subtasks->count() }}
-                                        </span>
+                                        @php
+                                            $effectiveSpent = $task->effective_spent_minutes;
+                                        @endphp
+                                        <div class="flex flex-col items-center gap-1">
+                                            <span class="text-[#9cdcfe]">
+                                                {{ $task->subtasks->where('is_completed', true)->count() }} / {{ $task->subtasks->count() }}
+                                            </span>
+                                            <span class="text-xs text-[#4ec9b0]">{{ intdiv($effectiveSpent, 60) }}h {{ $effectiveSpent % 60 }}m</span>
+                                        </div>
                                     @else
                                         @php
-                                            $workedHours = intdiv($task->total_spent, 60);
-                                            $workedMinutes = $task->total_spent % 60;
+                                            $effectiveSpent = $task->effective_spent_minutes;
+                                            $workedHours = intdiv($effectiveSpent, 60);
+                                            $workedMinutes = $effectiveSpent % 60;
                                         @endphp
                                         {{ $workedHours }}h {{ $workedMinutes }}m
                                     @endif
@@ -105,13 +124,21 @@
                                     @if($task->completion_method === 'subtasks')
                                         @php
                                             $remainingSubtasks = $task->subtasks->where('is_completed', false)->count();
+                                            $effectiveEst = $task->effective_estimated_minutes;
+                                            $effectiveSpent = $task->effective_spent_minutes;
+                                            $effectiveRemaining = max(0, $effectiveEst - $effectiveSpent);
                                         @endphp
-                                        <span class="{{ $remainingSubtasks == 0 ? 'text-[#4ec9b0]' : 'text-[#ce9178]' }}">
-                                            {{ $remainingSubtasks }} pendientes
-                                        </span>
+                                        <div class="flex flex-col items-center gap-1">
+                                            <span class="{{ $remainingSubtasks == 0 ? 'text-[#4ec9b0]' : 'text-[#ce9178]' }}">
+                                                {{ $remainingSubtasks }} pendientes
+                                            </span>
+                                            <span class="text-xs {{ $effectiveRemaining == 0 ? 'text-[#4ec9b0]' : 'text-[#ce9178]' }}">{{ intdiv($effectiveRemaining, 60) }}h {{ $effectiveRemaining % 60 }}m</span>
+                                        </div>
                                     @else
                                         @php
-                                            $diffMinutes = $task->estimated_minutes - $task->total_spent;
+                                            $effectiveEst = $task->effective_estimated_minutes;
+                                            $effectiveSpent = $task->effective_spent_minutes;
+                                            $diffMinutes = $effectiveEst - $effectiveSpent;
                                             $isOvertime = $diffMinutes < 0;
                                             $absMinutes = abs($diffMinutes);
                                             $remainingHours = intdiv($absMinutes, 60);
@@ -126,15 +153,22 @@
                                     <div class="mb-3">
                                         <div class="flex justify-between text-xs mb-1 font-mono">
                                             @if($task->completion_method === 'subtasks')
+                                                @php
+                                                    $effectiveEst = $task->effective_estimated_minutes;
+                                                    $effectiveSpent = $task->effective_spent_minutes;
+                                                @endphp
                                                 <span class="text-[#9cdcfe]">
-                                                    {{ $task->subtasks->where('is_completed', true)->count() }} / {{ $task->subtasks->count() }} Subtasks
+                                                    {{ intdiv($effectiveSpent, 60) }}h {{ $effectiveSpent % 60 }}m 
+                                                    <span class="text-[#6a9955]">// {{ intdiv($effectiveEst, 60) }}h {{ $effectiveEst % 60 }}m</span>
                                                 </span>
                                             @else
                                                 @php
-                                                    $spentHours = intdiv($task->total_spent, 60);
-                                                    $spentMins = $task->total_spent % 60;
-                                                    $estHours = intdiv($task->estimated_minutes, 60);
-                                                    $estMins = $task->estimated_minutes % 60;
+                                                    $effectiveEst = $task->effective_estimated_minutes;
+                                                    $effectiveSpent = $task->effective_spent_minutes;
+                                                    $spentHours = intdiv($effectiveSpent, 60);
+                                                    $spentMins = $effectiveSpent % 60;
+                                                    $estHours = intdiv($effectiveEst, 60);
+                                                    $estMins = $effectiveEst % 60;
                                                 @endphp
                                                 <span class="text-[#9cdcfe]">
                                                     {{ $spentHours }}h {{ $spentMins }}m 

@@ -55,14 +55,46 @@
                             @if($task->subtasks->count() > 0)
                                 <div>
                                     <label class="block text-xs font-mono text-[#7b7b7b] mb-2">Subtareas</label>
+                                    
+                                    {{-- Time Summary --}}
+                                    @php
+                                        $totalEstimated = $task->subtasks->sum('estimated_minutes');
+                                        $totalSpent = $task->subtasks->sum('spent_minutes');
+                                    @endphp
+                                    @if($totalEstimated > 0 || $totalSpent > 0)
+                                        <div class="flex gap-4 mb-3 text-xs p-2 bg-[#1e1e1e] rounded border border-[#333]">
+                                            <div class="flex items-center gap-1">
+                                                <span class="text-[#5a5a5a]">⏱ Estimado:</span>
+                                                <span class="text-[#ce9178]">{{ intdiv($totalEstimated, 60) }}h {{ $totalEstimated % 60 }}m</span>
+                                            </div>
+                                            <div class="flex items-center gap-1">
+                                                <span class="text-[#5a5a5a]">✓ Invertido:</span>
+                                                <span class="text-[#4ec9b0]">{{ intdiv($totalSpent, 60) }}h {{ $totalSpent % 60 }}m</span>
+                                            </div>
+                                        </div>
+                                    @endif
+                                    
                                     <div class="space-y-3">
                                         @foreach($task->subtasks as $subtask)
                                             <div class="bg-[#1e1e1e] rounded p-3 border border-[#333]">
-                                                <div class="flex items-center gap-2 mb-2">
-                                                    <span class="text-xs {{ $subtask->is_completed ? 'text-[#4ec9b0]' : 'text-[#ce9178]' }}">
-                                                        {{ $subtask->is_completed ? '✓' : '○' }}
-                                                    </span>
-                                                    <span class="text-sm text-[#d4d4d4] font-medium">{{ $subtask->title }}</span>
+                                                <div class="flex items-center justify-between mb-2">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="text-xs {{ $subtask->is_completed ? 'text-[#4ec9b0]' : 'text-[#ce9178]' }}">
+                                                            {{ $subtask->is_completed ? '✓' : '○' }}
+                                                        </span>
+                                                        <span class="text-sm text-[#d4d4d4] font-medium">{{ $subtask->title }}</span>
+                                                    </div>
+                                                    {{-- Subtask Time Badge --}}
+                                                    @if($subtask->estimated_minutes > 0 || $subtask->spent_minutes > 0)
+                                                        <div class="flex gap-2 text-xs">
+                                                            @if($subtask->estimated_minutes > 0)
+                                                                <span class="text-[#ce9178]">{{ intdiv($subtask->estimated_minutes, 60) }}h {{ $subtask->estimated_minutes % 60 }}m</span>
+                                                            @endif
+                                                            @if($subtask->spent_minutes > 0)
+                                                                <span class="text-[#4ec9b0]">({{ intdiv($subtask->spent_minutes, 60) }}h {{ $subtask->spent_minutes % 60 }}m)</span>
+                                                            @endif
+                                                        </div>
+                                                    @endif
                                                 </div>
                                                 @if($isEditing)
                                                     <input type="text" wire:model="subtaskDescriptions.{{ $subtask->id }}" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#9d9d9d] focus:border-[#007fd4] focus:ring-[#007fd4] text-xs py-1.5 px-3 placeholder-[#555]" placeholder="Detalles de la subtarea...">

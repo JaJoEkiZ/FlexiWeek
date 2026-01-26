@@ -19,6 +19,8 @@ class WeeklyPlanner extends Component
 
     public $minutesInput = [];
 
+    public $selectedSubtask = [];
+
     // Estado del Modal de Edición (Ahora manejado por TaskForm)
 
     public function mount()
@@ -66,6 +68,11 @@ class WeeklyPlanner extends Component
 
     public function addTime($taskId)
     {
+        // Si hay una subtarea seleccionada, usar addTimeToSubtask
+        if (! empty($this->selectedSubtask[$taskId])) {
+            return $this->addTimeToSubtask($taskId);
+        }
+
         $minutes = (int) ($this->minutesInput[$taskId] ?? 0);
 
         if ($minutes > 0) {
@@ -85,6 +92,27 @@ class WeeklyPlanner extends Component
                 session()->flash('message', "¡Tarea completada! Se cargaron {$minutes} minutos.");
             } else {
                 session()->flash('message', "¡Se cargaron {$minutes} minutos!");
+            }
+        }
+    }
+
+    public function addTimeToSubtask($taskId)
+    {
+        $subtaskId = $this->selectedSubtask[$taskId] ?? null;
+        $minutes = (int) ($this->minutesInput[$taskId] ?? 0);
+
+        if ($subtaskId && $minutes > 0) {
+            $subtask = \App\Models\Subtask::find($subtaskId);
+
+            if ($subtask) {
+                $subtask->spent_minutes += $minutes;
+                $subtask->save();
+
+                // Limpiar inputs
+                $this->minutesInput[$taskId] = '';
+                $this->selectedSubtask[$taskId] = null;
+
+                session()->flash('message', "¡Se cargaron {$minutes} minutos a la subtarea '{$subtask->title}'!");
             }
         }
     }

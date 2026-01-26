@@ -58,6 +58,10 @@ class TaskForm extends Component
                     'title' => $subtask->title,
                     'description' => $subtask->description ?? '',
                     'is_completed' => (bool) $subtask->is_completed,
+                    'estimated_hours' => intdiv($subtask->estimated_minutes, 60),
+                    'estimated_minutes' => $subtask->estimated_minutes % 60,
+                    'spent_hours' => intdiv($subtask->spent_minutes, 60),
+                    'spent_minutes' => $subtask->spent_minutes % 60,
                 ];
             })->toArray();
             $this->hours = intdiv($task->estimated_minutes, 60);
@@ -150,10 +154,15 @@ class TaskForm extends Component
 
         foreach ($this->subtasks as $subtaskData) {
             if (! empty($subtaskData['title'])) {
+                $estimatedMinutes = ((int) ($subtaskData['estimated_hours'] ?? 0) * 60) + (int) ($subtaskData['estimated_minutes'] ?? 0);
+                $spentMinutes = ((int) ($subtaskData['spent_hours'] ?? 0) * 60) + (int) ($subtaskData['spent_minutes'] ?? 0);
+
                 $task->subtasks()->create([
                     'title' => $subtaskData['title'],
                     'description' => $subtaskData['description'] ?? '',
                     'is_completed' => $subtaskData['is_completed'] ?? false,
+                    'estimated_minutes' => $estimatedMinutes,
+                    'spent_minutes' => $spentMinutes,
                 ]);
             }
         }
@@ -181,7 +190,15 @@ class TaskForm extends Component
 
     public function addSubtask()
     {
-        $this->subtasks[] = ['title' => '', 'description' => '', 'is_completed' => false];
+        $this->subtasks[] = [
+            'title' => '',
+            'description' => '',
+            'is_completed' => false,
+            'estimated_hours' => 0,
+            'estimated_minutes' => 0,
+            'spent_hours' => 0,
+            'spent_minutes' => 0,
+        ];
     }
 
     public function removeSubtask($index)

@@ -99,7 +99,7 @@
                                         @endif
                                         
                                         @foreach($subtasks as $index => $subtask)
-                                            <div class="space-y-1 p-2 bg-[#2d2d2d] rounded border border-[#3c3c3c]">
+                                            <div class="space-y-2 p-2 bg-[#2d2d2d] rounded border border-[#3c3c3c]">
                                                 <div class="flex gap-2 items-center">
                                                     <input type="checkbox" wire:model="subtasks.{{ $index }}.is_completed" class="rounded bg-[#3c3c3c] border-[#333] text-[#007fd4] focus:ring-0 focus:ring-offset-0">
                                                     <input type="text" wire:model="subtasks.{{ $index }}.title" placeholder="Título de la subtarea" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3 placeholder-[#666]">
@@ -110,6 +110,18 @@
                                                     </button>
                                                 </div>
                                                 <input type="text" wire:model="subtasks.{{ $index }}.description" placeholder="Detalles de la subtarea (opcional)" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#9d9d9d] focus:border-[#007fd4] focus:ring-[#007fd4] text-xs py-1.5 px-3 placeholder-[#555]">
+                                                
+                                                {{-- Time Field: Solo Invertido --}}
+                                                <div class="flex items-center gap-2 mt-2">
+                                                    <label class="text-xs font-mono text-[#5a5a5a]">⏱ Tiempo:</label>
+                                                    <div class="flex gap-1 items-center">
+                                                        <input type="number" wire:model="subtasks.{{ $index }}.spent_hours" min="0" placeholder="0" class="w-12 rounded bg-[#3c3c3c] border-[#333] text-[#9d9d9d] focus:border-[#007fd4] focus:ring-[#007fd4] text-xs py-1 px-2 placeholder-[#555]">
+                                                        <span class="text-[#5a5a5a] text-xs">h</span>
+                                                        <input type="number" wire:model="subtasks.{{ $index }}.spent_minutes" min="0" max="59" placeholder="0" class="w-12 rounded bg-[#3c3c3c] border-[#333] text-[#9d9d9d] focus:border-[#007fd4] focus:ring-[#007fd4] text-xs py-1 px-2 placeholder-[#555]">
+                                                        <span class="text-[#5a5a5a] text-xs">m</span>
+                                                    </div>
+                                                </div>
+                                                
                                                 @error('subtasks.'.$index.'.title') <span class="text-[#f14c4c] text-xs font-mono mt-1">{{ $message }}</span> @enderror
                                             </div>
                                         @endforeach
