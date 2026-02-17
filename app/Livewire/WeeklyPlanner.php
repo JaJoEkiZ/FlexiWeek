@@ -108,11 +108,18 @@ class WeeklyPlanner extends Component
                 $subtask->spent_minutes += $minutes;
                 $subtask->save();
 
+                // Verificar si llegamos al 100% para completar la tarea
+                $task = Task::find($taskId);
+                if ($task && $task->progress >= 100 && $task->status !== TaskStatus::Completed) {
+                    $task->update(['status' => TaskStatus::Completed]);
+                    session()->flash('message', "¡Tarea completada! Se cargaron {$minutes} minutos a la subtarea '{$subtask->title}'.");
+                } else {
+                    session()->flash('message', "¡Se cargaron {$minutes} minutos a la subtarea '{$subtask->title}'!");
+                }
+
                 // Limpiar inputs
                 $this->minutesInput[$taskId] = '';
                 $this->selectedSubtask[$taskId] = null;
-
-                session()->flash('message', "¡Se cargaron {$minutes} minutos a la subtarea '{$subtask->title}'!");
             }
         }
     }

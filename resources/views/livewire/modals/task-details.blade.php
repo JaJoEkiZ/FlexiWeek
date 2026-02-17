@@ -58,8 +58,8 @@
                                     
                                     {{-- Time Summary --}}
                                     @php
-                                        $totalEstimated = $task->subtasks->sum('estimated_minutes');
-                                        $totalSpent = $task->subtasks->sum('spent_minutes');
+                                        $totalEstimated = $task->effective_estimated_minutes;
+                                        $totalSpent = $task->effective_spent_minutes;
                                     @endphp
                                     @if($totalEstimated > 0 || $totalSpent > 0)
                                         <div class="flex gap-4 mb-3 text-xs p-2 bg-[#1e1e1e] rounded border border-[#333]">

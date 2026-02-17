@@ -52,11 +52,11 @@ class Task extends Model
         return $this->subtasks->sum('spent_minutes');
     }
 
-    // Tiempo estimado efectivo: solo el tiempo de la tarea
-    // Las subtareas NO expanden el tiempo total, solo completan el tiempo estimado
+    // Tiempo estimado efectivo: tarea + subtareas con tiempo estimado
+    // Subtareas con estimated_minutes = 0 se consideran incluidas en el tiempo de la tarea
     public function getEffectiveEstimatedMinutesAttribute()
     {
-        return $this->estimated_minutes;
+        return $this->estimated_minutes + $this->subtasks_total_estimated;
     }
 
     // Tiempo invertido efectivo: suma de TaskTimeLog + tiempo de subtareas
@@ -103,11 +103,12 @@ class Task extends Model
             return round($completionRatio * 100);
         }
 
-        // Tareas "Por Tiempo" - usar TaskTimeLog
-        if (! $this->estimated_minutes || $this->estimated_minutes == 0) {
+        // Tareas "Por Tiempo" - usar tiempo efectivo (tarea + subtareas)
+        $effectiveEstimated = $this->effective_estimated_minutes;
+        if (! $effectiveEstimated || $effectiveEstimated == 0) {
             return 0;
         }
 
-        return round(($this->total_spent / $this->estimated_minutes) * 100);
+        return round(($this->effective_spent_minutes / $effectiveEstimated) * 100);
     }
 }

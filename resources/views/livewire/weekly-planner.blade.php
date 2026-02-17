@@ -187,7 +187,6 @@
                                         </div>
                                     </div>
 
-                                    @if($task->completion_method !== 'subtasks')
                                     <div class="flex gap-2">
                                         <input 
                                             type="number" 
@@ -206,7 +205,6 @@
                                             +
                                         </button>
                                     </div>
-                                    @endif
                                 </td>
                                 <td class="p-4 text-right">
                                     <button 

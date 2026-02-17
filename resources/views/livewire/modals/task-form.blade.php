@@ -111,13 +111,13 @@
                                                 </div>
                                                 <input type="text" wire:model="subtasks.{{ $index }}.description" placeholder="Detalles de la subtarea (opcional)" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#9d9d9d] focus:border-[#007fd4] focus:ring-[#007fd4] text-xs py-1.5 px-3 placeholder-[#555]">
                                                 
-                                                {{-- Time Field: Solo Invertido --}}
+                                                {{-- Time Field: Tiempo Estimado --}}
                                                 <div class="flex items-center gap-2 mt-2">
-                                                    <label class="text-xs font-mono text-[#5a5a5a]">⏱ Tiempo:</label>
+                                                    <label class="text-xs font-mono text-[#5a5a5a]">⏱ Estimado:</label>
                                                     <div class="flex gap-1 items-center">
-                                                        <input type="number" wire:model="subtasks.{{ $index }}.spent_hours" min="0" placeholder="0" class="w-12 rounded bg-[#3c3c3c] border-[#333] text-[#9d9d9d] focus:border-[#007fd4] focus:ring-[#007fd4] text-xs py-1 px-2 placeholder-[#555]">
+                                                        <input type="number" wire:model="subtasks.{{ $index }}.estimated_hours" min="0" placeholder="0" class="w-12 rounded bg-[#3c3c3c] border-[#333] text-[#9d9d9d] focus:border-[#007fd4] focus:ring-[#007fd4] text-xs py-1 px-2 placeholder-[#555]">
                                                         <span class="text-[#5a5a5a] text-xs">h</span>
-                                                        <input type="number" wire:model="subtasks.{{ $index }}.spent_minutes" min="0" max="59" placeholder="0" class="w-12 rounded bg-[#3c3c3c] border-[#333] text-[#9d9d9d] focus:border-[#007fd4] focus:ring-[#007fd4] text-xs py-1 px-2 placeholder-[#555]">
+                                                        <input type="number" wire:model="subtasks.{{ $index }}.estimated_minutes" min="0" max="59" placeholder="0" class="w-12 rounded bg-[#3c3c3c] border-[#333] text-[#9d9d9d] focus:border-[#007fd4] focus:ring-[#007fd4] text-xs py-1 px-2 placeholder-[#555]">
                                                         <span class="text-[#5a5a5a] text-xs">m</span>
                                                     </div>
                                                 </div>
