@@ -91,6 +91,10 @@ class WeeklyPlanner extends Component
                 $task->update(['status' => TaskStatus::Completed]);
                 session()->flash('message', "¡Tarea completada! Se cargaron {$minutes} minutos.");
             } else {
+                // Auto cambiar a "En Curso" si está pendiente
+                if ($task->status === TaskStatus::Pending) {
+                    $task->update(['status' => TaskStatus::InProgress]);
+                }
                 session()->flash('message', "¡Se cargaron {$minutes} minutos!");
             }
         }
