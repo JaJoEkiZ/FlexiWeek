@@ -1,4 +1,4 @@
-<div x-data="{ sidebarOpen: window.innerWidth >= 768 }" class="flex h-screen bg-[#1e1e1e] text-[#d4d4d4] font-sans antialiased relative">
+<div x-data="{ sidebarOpen: window.innerWidth >= 768, ctxMenu: { show: false, x: 0, y: 0, taskId: null } }" @click="ctxMenu.show = false" class="flex h-screen bg-[#1e1e1e] text-[#d4d4d4] font-sans antialiased relative">
     
     <div x-show="sidebarOpen" 
          @click="sidebarOpen = false"
@@ -30,6 +30,7 @@
                         <div 
                             data-task-id="{{ $task->id }}"
                             wire:key="task-mobile-{{ $task->id }}"
+                            @contextmenu.prevent="ctxMenu = { show: true, x: $event.clientX, y: $event.clientY, taskId: {{ $task->id }} }"
                             class="bg-[#252526] rounded-md border border-[#333] p-4 space-y-3 shadow-sm select-none"
                         >
                             {{-- Fila 1: Handle + Estado + Título + Acciones --}}
@@ -194,6 +195,7 @@
                                     data-task-id="{{ $task->id }}"
                                     wire:key="task-desktop-{{ $task->id }}" 
                                     wire:click="openTaskForm({{ $task->id }})"
+                                    @contextmenu.prevent="ctxMenu = { show: true, x: $event.clientX, y: $event.clientY, taskId: {{ $task->id }} }"
                                     class="hover:bg-[#2a2d2e] transition-colors group cursor-pointer"
                                 >
                                     <td class="p-4">
@@ -319,6 +321,24 @@
     <livewire:modals.task-form />
     <livewire:modals.period-form />
     <livewire:modals.task-details />
+    <livewire:modals.duplicate-task />
+
+    <!-- Context Menu -->
+    <div x-show="ctxMenu.show" 
+         x-transition:enter="transition ease-out duration-100"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="transition ease-in duration-75"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-95"
+         :style="`position: fixed; left: ${ctxMenu.x}px; top: ${ctxMenu.y}px; z-index: 100;`"
+         @click.away="ctxMenu.show = false"
+         class="bg-[#252526] border border-[#333] rounded shadow-xl py-1 min-w-[160px]">
+        <button @click="$wire.dispatch('openDuplicateTask', { taskId: ctxMenu.taskId }); ctxMenu.show = false" 
+                class="w-full text-left px-4 py-2 text-sm text-[#d4d4d4] hover:bg-[#094771] flex items-center gap-2 transition-colors">
+            📋 Duplicar
+        </button>
+    </div>
 
     <style>
         .custom-scrollbar::-webkit-scrollbar { width: 10px; background-color: #1e1e1e; }
