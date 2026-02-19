@@ -32,6 +32,8 @@ class TaskForm extends Component
 
     public $completionMethod = 'time'; // 'time' por defecto
 
+    public $isPersistent = false;
+
     public $subtasks = []; // Array para nuevas subtareas inputs
 
     public function mount()
@@ -42,7 +44,7 @@ class TaskForm extends Component
 
     public function openTaskForm($payload = [])
     {
-        $this->reset(['taskId', 'title', 'description', 'periodId', 'hours', 'minutes', 'subtasks', 'completionMethod']);
+        $this->reset(['taskId', 'title', 'description', 'periodId', 'hours', 'minutes', 'subtasks', 'completionMethod', 'isPersistent']);
 
         $this->taskId = $payload['taskId'] ?? null;
         $defaultPeriodId = $payload['periodId'] ?? null;
@@ -53,6 +55,7 @@ class TaskForm extends Component
             $this->title = $task->title;
             $this->description = $task->description ?? '';
             $this->completionMethod = $task->completion_method ?? 'time';
+            $this->isPersistent = (bool) $task->is_persistent;
             $this->subtasks = $task->subtasks()->get()->map(function ($subtask) {
                 return [
                     'title' => $subtask->title,
@@ -72,6 +75,7 @@ class TaskForm extends Component
             $this->hours = 0;
             $this->minutes = 0;
             $this->completionMethod = 'time';
+            $this->isPersistent = false;
             $this->subtasks = [];
         }
 
@@ -132,6 +136,7 @@ class TaskForm extends Component
                 'description' => $this->description,
                 'estimated_minutes' => $totalMinutes,
                 'completion_method' => $this->completionMethod,
+                'is_persistent' => $this->isPersistent,
             ]);
             $message = 'Tarea actualizada correctamente.';
         } else {
@@ -142,6 +147,7 @@ class TaskForm extends Component
                 'estimated_minutes' => $totalMinutes,
                 'status' => TaskStatus::Pending,
                 'completion_method' => $this->completionMethod,
+                'is_persistent' => $this->isPersistent,
             ]);
             $message = 'Tarea creada correctamente.';
         }
@@ -210,7 +216,7 @@ class TaskForm extends Component
     public function close()
     {
         $this->isOpen = false;
-        $this->reset(['taskId', 'title', 'hours', 'minutes', 'periodId']);
+        $this->reset(['taskId', 'title', 'hours', 'minutes', 'periodId', 'isPersistent']);
     }
 
     public function render()

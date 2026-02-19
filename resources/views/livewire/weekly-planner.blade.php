@@ -60,7 +60,7 @@
                                         </span>
                                         {{ $task->status->label() }}
                                     </button>
-                                    <span class="font-medium text-[#d4d4d4] text-sm truncate block">{{ $task->title }}</span>
+                                    <span class="font-medium text-[#d4d4d4] text-sm truncate block">{{ $task->title }}@if($task->is_persistent) <span class="text-[#569cd6]" title="Tarea Persistente">🔁</span>@endif</span>
                                 </div>
                                 
                                 <div class="flex items-center gap-1 flex-shrink-0">
@@ -227,7 +227,7 @@
                                     </td>
                                     <td class="p-4">
                                         <div class="flex items-center gap-2">
-                                            <span class="font-medium text-[#d4d4d4] group-hover:text-white transition-colors">{{ $task->title }}</span>
+                                            <span class="font-medium text-[#d4d4d4] group-hover:text-white transition-colors">{{ $task->title }}@if($task->is_persistent) <span class="text-[#569cd6]" title="Tarea Persistente">🔁</span>@endif</span>
                                             <button 
                                                 wire:click="$dispatch('openTaskDetails', { taskId: {{ $task->id }} })"
                                                 @click.stop

@@ -47,6 +47,14 @@
                                         @error('completionMethod') <span class="text-[#f14c4c] text-xs font-mono mt-1">{{ $message }}</span> @enderror
                                     </div>
 
+                                    <div>
+                                        <label class="flex items-center gap-2 cursor-pointer">
+                                            <input type="checkbox" wire:model="isPersistent" class="rounded bg-[#3c3c3c] border-[#333] text-[#007fd4] focus:ring-0 focus:ring-offset-0">
+                                            <span class="text-sm text-[#d4d4d4] flex items-center gap-1">🔁 Tarea Persistente</span>
+                                        </label>
+                                        <p class="text-[10px] text-[#5a5a5a] mt-1 ml-6">Se duplicará automáticamente en cada nueva semana. Al desactivarla, deja de replicarse.</p>
+                                    </div>
+
                                     @if($completionMethod === 'time')
                                     <div class="grid grid-cols-2 gap-4">
                                         <div>

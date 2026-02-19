@@ -111,4 +111,11 @@ class Task extends Model
 
         return round(($this->effective_spent_minutes / $effectiveEstimated) * 100);
     }
+
+    // Scope para tareas persistentes del usuario
+    public function scopePersistent($query, $userId)
+    {
+        return $query->where('is_persistent', true)
+            ->whereHas('period', fn ($q) => $q->where('user_id', $userId));
+    }
 }

@@ -131,9 +131,50 @@ class PeriodForm extends Component
         } else {
             $data['user_id'] = auth()->id();
             $period = Period::create($data);
+
+            // Duplicar tareas persistentes en el nuevo período
+            $this->duplicatePersistentTasks($period);
+
             $this->dispatch('periodSaved'); // Refresh parent
         }
         $this->dispatch('periodSaved');
+    }
+
+    protected function duplicatePersistentTasks(Period $newPeriod)
+    {
+        // Obtener TODAS las tareas del usuario, agrupar por título,
+        // tomar la versión más reciente, y solo duplicar si esa versión es persistente
+        $latestTasks = \App\Models\Task::whereHas('period', fn ($q) => $q->where('user_id', auth()->id()))
+            ->with(['subtasks', 'period'])
+            ->get()
+            ->groupBy('title')
+            ->map(fn ($group) => $group->sortByDesc(fn ($t) => $t->period->start_date)->first())
+            ->filter(fn ($task) => $task->is_persistent);
+
+        $order = 1;
+        foreach ($latestTasks as $sourceTask) {
+            $newTask = \App\Models\Task::create([
+                'period_id' => $newPeriod->id,
+                'title' => $sourceTask->title,
+                'description' => $sourceTask->description,
+                'estimated_minutes' => $sourceTask->estimated_minutes,
+                'status' => 'pending',
+                'completion_method' => $sourceTask->completion_method,
+                'is_persistent' => true,
+                'sort_order' => $order++,
+            ]);
+
+            // Duplicar subtareas (sin progreso)
+            foreach ($sourceTask->subtasks as $subtask) {
+                $newTask->subtasks()->create([
+                    'title' => $subtask->title,
+                    'description' => $subtask->description,
+                    'estimated_minutes' => $subtask->estimated_minutes,
+                    'spent_minutes' => 0,
+                    'is_completed' => false,
+                ]);
+            }
+        }
     }
 
     public function close()
