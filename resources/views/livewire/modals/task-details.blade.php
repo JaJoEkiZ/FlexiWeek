@@ -51,6 +51,62 @@
                                 @endif
                             </div>
 
+                            <!-- Total Time Summary -->
+                            @php
+                                $effectiveEstimated = $task->effective_estimated_minutes;
+                                $effectiveSpent = $task->effective_spent_minutes;
+                            @endphp
+                            @if($effectiveEstimated > 0 || $effectiveSpent > 0)
+                                <div class="flex gap-4 text-xs p-2.5 bg-[#1a2332] rounded border border-[#264f78] items-center">
+                                    <span class="text-[#569cd6] font-medium">📊 Tiempo Total</span>
+                                    <div class="flex items-center gap-1">
+                                        <span class="text-[#5a5a5a]">⏱ Estimado:</span>
+                                        <span class="text-[#ce9178] font-medium">{{ intdiv($effectiveEstimated, 60) }}h {{ $effectiveEstimated % 60 }}m</span>
+                                    </div>
+                                    <div class="flex items-center gap-1">
+                                        <span class="text-[#5a5a5a]">✓ Invertido:</span>
+                                        <span class="text-[#4ec9b0] font-medium">{{ intdiv($effectiveSpent, 60) }}h {{ $effectiveSpent % 60 }}m</span>
+                                    </div>
+                                </div>
+                            @endif
+                            <!-- General Task Time -->
+                            @if($task->estimated_minutes > 0 || $task->timeLogs->count() > 0)
+                                <div>
+                                    <label class="block text-xs font-mono text-[#7b7b7b] mb-2">Tiempo General de Tarea</label>
+                                    
+                                    {{-- Summary Bar --}}
+                                    <div class="flex gap-4 mb-3 text-xs p-2 bg-[#1e1e1e] rounded border border-[#333]">
+                                        @if($task->estimated_minutes > 0)
+                                            <div class="flex items-center gap-1">
+                                                <span class="text-[#5a5a5a]">⏱ Estimado:</span>
+                                                <span class="text-[#ce9178]">{{ intdiv($task->estimated_minutes, 60) }}h {{ $task->estimated_minutes % 60 }}m</span>
+                                            </div>
+                                        @endif
+                                        <div class="flex items-center gap-1">
+                                            <span class="text-[#5a5a5a]">✓ Invertido:</span>
+                                            <span class="text-[#4ec9b0]">{{ intdiv($task->total_spent, 60) }}h {{ $task->total_spent % 60 }}m</span>
+                                        </div>
+                                    </div>
+
+                                    {{-- Individual Log Entries --}}
+                                    @if($task->timeLogs->count() > 0)
+                                        <div class="space-y-1 max-h-40 overflow-y-auto">
+                                            @foreach($task->timeLogs->sortByDesc('log_date') as $log)
+                                                <div class="flex items-center justify-between bg-[#1e1e1e] rounded px-3 py-1.5 border border-[#333] text-xs">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="text-[#007fd4]">🕐</span>
+                                                        <span class="text-[#9d9d9d] font-mono">{{ \Carbon\Carbon::parse($log->log_date)->format('d/m/Y') }}</span>
+                                                    </div>
+                                                    <span class="text-[#4ec9b0] font-medium">
+                                                        {{ intdiv($log->minutes_spent, 60) }}h {{ $log->minutes_spent % 60 }}m
+                                                    </span>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
+
                             <!-- Subtasks Descriptions -->
                             @if($task->subtasks->count() > 0)
                                 <div>
@@ -58,8 +114,8 @@
                                     
                                     {{-- Time Summary --}}
                                     @php
-                                        $totalEstimated = $task->effective_estimated_minutes;
-                                        $totalSpent = $task->effective_spent_minutes;
+                                        $totalEstimated = $task->subtasks_total_estimated;
+                                        $totalSpent = $task->subtasks_total_spent;
                                     @endphp
                                     @if($totalEstimated > 0 || $totalSpent > 0)
                                         <div class="flex gap-4 mb-3 text-xs p-2 bg-[#1e1e1e] rounded border border-[#333]">

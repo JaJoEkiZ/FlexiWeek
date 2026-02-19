@@ -142,8 +142,7 @@
                                         $effectiveSpentVal = $task->effective_spent_minutes;
                                     @endphp
                                     <span class="text-[#9cdcfe]">
-                                        {{ intdiv($effectiveSpentVal, 60) }}h {{ $effectiveSpentVal % 60 }}m 
-                                        <span class="text-[#6a9955]">// {{ intdiv($effectiveEst, 60) }}h {{ $effectiveEst % 60 }}m</span>
+                                        {{ intdiv($effectiveSpentVal, 60) }}h {{ $effectiveSpentVal % 60 }}m<span class="text-[#6a9955]"> / {{ intdiv($effectiveEst, 60) }}h {{ $effectiveEst % 60 }}m</span>
                                     </span>
                                     <span class="{{ $task->progress >= 100 ? 'text-[#4ec9b0]' : 'text-[#7b7b7b]' }}">{{ $task->progress }}%</span>
                                 </div>
@@ -270,7 +269,7 @@
                                         <div class="mb-3">
                                             <div class="flex justify-between text-xs mb-1 font-mono">
                                                 <span class="text-[#9cdcfe]">
-                                                     {{ intdiv($task->effective_spent_minutes, 60) }}h {{ $task->effective_spent_minutes % 60 }}m
+                                                     {{ intdiv($task->effective_spent_minutes, 60) }}h {{ $task->effective_spent_minutes % 60 }}m<span class="text-[#6a9955]"> / {{ intdiv($task->effective_estimated_minutes, 60) }}h {{ $task->effective_estimated_minutes % 60 }}m</span>
                                                 </span>
                                                 <span class="{{ $task->progress >= 100 ? 'text-[#4ec9b0]' : 'text-[#7b7b7b]' }}">
                                                     {{ $task->progress }}%
