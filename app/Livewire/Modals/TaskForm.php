@@ -173,6 +173,10 @@ class TaskForm extends Component
             }
         }
 
+        // Refrescar modelo y relaciones para recalcular progreso con los nuevos datos
+        $task->refresh();
+        $task->load(['subtasks', 'timeLogs']);
+
         // Verificar y actualizar estado si es por Subtareas
         if ($this->completionMethod === 'subtasks' && $task->subtasks()->count() > 0) {
             $total = $task->subtasks()->count();
@@ -182,10 +186,17 @@ class TaskForm extends Component
                 $task->update(['status' => TaskStatus::Completed]);
             } else {
                 // Si estaba completada y agregamos una nueva o desmarcamos, volver a en curso
-                // Podríamos usar InProgress o Pending. Si ya tiene avance, InProgress.
                 if ($task->status === TaskStatus::Completed) {
-                    $task->update(['status' => TaskStatus::InProgress]); // o Pending
+                    $task->update(['status' => TaskStatus::InProgress]);
                 }
+            }
+        }
+
+        // Verificar y actualizar estado si es por Tiempo
+        // Si la tarea estaba Finalizada y ahora el progreso bajó de 100% (se agregó más tiempo), volver a En Curso
+        if ($this->completionMethod === 'time' && $task->status === TaskStatus::Completed) {
+            if ($task->progress < 100) {
+                $task->update(['status' => TaskStatus::InProgress]);
             }
         }
 
