@@ -31,7 +31,7 @@
                             data-task-id="{{ $task->id }}"
                             wire:key="task-mobile-{{ $task->id }}"
                             @contextmenu.prevent="ctxMenu = { show: true, x: $event.clientX, y: $event.clientY, taskId: {{ $task->id }} }"
-                            class="bg-[#252526] rounded-md border border-[#333] p-4 space-y-3 shadow-sm select-none"
+                            class="bg-[#252526] rounded-md border border-[#333] p-4 space-y-3 shadow-sm select-none {{ $task->status->value === 'cancelled' ? 'opacity-60' : '' }}"
                         >
                             {{-- Fila 1: Handle + Estado + Título + Acciones --}}
                             <div class="flex items-start justify-between gap-2">
@@ -46,22 +46,24 @@
                                     <button 
                                         wire:click="cycleStatus({{ $task->id }})"
                                         @click.stop
-                                        @if($task->progress >= 100) disabled @endif
+                                        @if($task->progress >= 100 || $task->status->value === 'cancelled') disabled @endif
                                         class="inline-flex items-center px-2 py-1 rounded text-xs font-medium border transition-all select-none flex-shrink-0
-                                        {{ $task->progress >= 100 ? 'opacity-75 cursor-not-allowed' : 'cursor-pointer' }}
+                                        {{ $task->progress >= 100 || $task->status->value === 'cancelled' ? 'opacity-75 cursor-not-allowed' : 'cursor-pointer' }}
                                         {{ $task->status->color() === 'green' ? 'bg-[#1e3a23] text-[#7ee787] border-[#2ea043]' : '' }}
                                         {{ $task->status->color() === 'blue'  ? 'bg-[#152e42] text-[#79c0ff] border-[#1f6feb]' : '' }}
                                         {{ $task->status->color() === 'yellow'? 'bg-[#362808] text-[#d29922] border-[#9e6a03]' : '' }}
-                                        {{ $task->status->color() === 'gray'  ? 'bg-[#26282e] text-[#8b949e] border-[#30363d]' : '' }}">
+                                        {{ $task->status->color() === 'gray'  ? 'bg-[#26282e] text-[#8b949e] border-[#30363d]' : '' }}
+                                        {{ $task->status->color() === 'red'   ? 'bg-[#3b1219] text-[#f85149] border-[#da3633]' : '' }}">
                                         <span class="mr-1 opacity-70">
                                             @if($task->status->color() === 'green') ✓ 
                                             @elseif($task->status->color() === 'blue') ▶
                                             @elseif($task->status->color() === 'yellow') ⏸
+                                            @elseif($task->status->color() === 'red') ✕
                                             @else • @endif
                                         </span>
                                         {{ $task->status->label() }}
                                     </button>
-                                    <span class="font-medium text-[#d4d4d4] text-sm truncate block">{{ $task->title }}@if($task->is_persistent) <span class="text-[#569cd6]" title="Tarea Persistente">🔁</span>@endif</span>
+                                    <span class="font-medium text-[#d4d4d4] text-sm truncate block {{ $task->status->value === 'cancelled' ? 'line-through' : '' }}">{{ $task->title }}@if($task->is_persistent) <span class="text-[#569cd6]" title="Tarea Persistente">🔁</span>@endif</span>
                                 </div>
                                 
                                 <div class="flex items-center gap-1 flex-shrink-0">
@@ -86,7 +88,8 @@
                             @if($task->subtasks->count() > 0)
                                 <div @click.stop>
                                     <select wire:model="selectedSubtask.{{ $task->id }}" 
-                                            class="w-full px-2 py-1.5 text-xs bg-[#3c3c3c] border border-[#333] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] focus:outline-none">
+                                            @if($task->status->value === 'cancelled') disabled @endif
+                                            class="w-full px-2 py-1.5 text-xs bg-[#3c3c3c] border border-[#333] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] focus:outline-none {{ $task->status->value === 'cancelled' ? 'opacity-50 cursor-not-allowed' : '' }}">
                                         <option value="">-- Tarea principal --</option>
                                         @foreach($task->subtasks as $subtask)
                                             <option value="{{ $subtask->id }}">{{ $subtask->title }}</option>
@@ -151,19 +154,54 @@
                                     <div class="h-1.5 rounded-full transition-all duration-500 {{ $task->progress >= 100 ? 'bg-[#4ec9b0]' : 'bg-[#007fd4]' }}" 
                                          style="width: {{ min($task->progress, 100) }}%"></div>
                                 </div>
-                                <div class="flex gap-2" @click.stop>
-                                    <input 
-                                        type="number" 
-                                        placeholder="0" 
-                                        wire:model="minutesInput.{{ $task->id }}"
-                                        wire:keydown.enter="addTime({{ $task->id }})"
-                                        class="w-full px-3 py-2 text-sm bg-[#3c3c3c] border border-[#333] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:ring-1 focus:ring-[#007fd4] focus:outline-none placeholder-[#666]"
-                                    >
+                                <div x-data="{ timeMode: 'min' }" class="flex flex-col gap-2" @click.stop>
+                                    <div class="flex gap-2 items-center">
+                                        <template x-if="timeMode === 'min'">
+                                            <input 
+                                                type="number" 
+                                                placeholder="min" 
+                                                wire:model="minutesInput.{{ $task->id }}"
+                                                wire:keydown.enter="addTime({{ $task->id }})"
+                                                @if($task->status->value === 'cancelled') disabled @endif
+                                                class="w-full px-3 py-2 text-sm bg-[#3c3c3c] border border-[#333] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:ring-1 focus:ring-[#007fd4] focus:outline-none placeholder-[#666] {{ $task->status->value === 'cancelled' ? 'opacity-50 cursor-not-allowed' : '' }}"
+                                            >
+                                        </template>
+                                        <template x-if="timeMode === 'hm'">
+                                            <div class="flex gap-1 items-center w-full">
+                                                <input 
+                                                    type="number" 
+                                                    placeholder="h" 
+                                                    min="0"
+                                                    wire:model="hoursInput.{{ $task->id }}"
+                                                    wire:keydown.enter="addTime({{ $task->id }})"
+                                                    @if($task->status->value === 'cancelled') disabled @endif
+                                                    class="w-1/2 px-2 py-2 text-sm bg-[#3c3c3c] border border-[#333] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:ring-1 focus:ring-[#007fd4] focus:outline-none placeholder-[#666] {{ $task->status->value === 'cancelled' ? 'opacity-50 cursor-not-allowed' : '' }}"
+                                                >
+                                                <span class="text-[#7b7b7b] text-xs">:</span>
+                                                <input 
+                                                    type="number" 
+                                                    placeholder="m" 
+                                                    min="0" max="59"
+                                                    wire:model="minutesInput.{{ $task->id }}"
+                                                    wire:keydown.enter="addTime({{ $task->id }})"
+                                                    @if($task->status->value === 'cancelled') disabled @endif
+                                                    class="w-1/2 px-2 py-2 text-sm bg-[#3c3c3c] border border-[#333] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:ring-1 focus:ring-[#007fd4] focus:outline-none placeholder-[#666] {{ $task->status->value === 'cancelled' ? 'opacity-50 cursor-not-allowed' : '' }}"
+                                                >
+                                            </div>
+                                        </template>
+                                        <button 
+                                            wire:click="addTime({{ $task->id }})"
+                                            @if($task->status->value === 'cancelled') disabled @endif
+                                            class="px-4 py-2 bg-[#333] hover:bg-[#444] text-[#d4d4d4] rounded border border-[#333] text-sm font-bold transition-colors flex-shrink-0 {{ $task->status->value === 'cancelled' ? 'opacity-50 cursor-not-allowed' : '' }}"
+                                            title="Sumar tiempo">
+                                            +
+                                        </button>
+                                    </div>
                                     <button 
-                                        wire:click="addTime({{ $task->id }})"
-                                        class="px-4 py-2 bg-[#333] hover:bg-[#444] text-[#d4d4d4] rounded border border-[#333] text-sm font-bold transition-colors"
-                                        title="Sumar tiempo">
-                                        +
+                                        @click="timeMode = timeMode === 'min' ? 'hm' : 'min'"
+                                        class="px-2 py-0.5 text-[10px] font-medium text-[#ffffff] bg-[#007fd4] border border-[#30363d] rounded hover:bg-[#152e42] hover:border-[#1f6feb] transition-all self-start"
+                                        type="button">
+                                        <span x-text="timeMode === 'min' ? '⏱ Cargar hora:min' : '⏱ Cargar min'"></span>
                                     </button>
                                 </div>
                             </div>
@@ -196,7 +234,7 @@
                                     wire:key="task-desktop-{{ $task->id }}" 
                                     wire:click="openTaskForm({{ $task->id }})"
                                     @contextmenu.prevent="ctxMenu = { show: true, x: $event.clientX, y: $event.clientY, taskId: {{ $task->id }} }"
-                                    class="hover:bg-[#2a2d2e] transition-colors group cursor-pointer"
+                                    class="hover:bg-[#2a2d2e] transition-colors group cursor-pointer {{ $task->status->value === 'cancelled' ? 'opacity-60' : '' }}"
                                 >
                                     <td class="p-4">
                                         <div class="flex items-center gap-2">
@@ -208,18 +246,20 @@
                                             <button 
                                                 wire:click="cycleStatus({{ $task->id }})"
                                                 @click.stop
-                                                @if($task->progress >= 100) disabled @endif
+                                                @if($task->progress >= 100 || $task->status->value === 'cancelled') disabled @endif
                                                 class="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium border transition-all select-none
-                                                {{ $task->progress >= 100 ? 'opacity-75 cursor-not-allowed' : 'cursor-pointer' }}
+                                                {{ $task->progress >= 100 || $task->status->value === 'cancelled' ? 'opacity-75 cursor-not-allowed' : 'cursor-pointer' }}
                                                 {{ $task->status->color() === 'green' ? 'bg-[#1e3a23] text-[#7ee787] border-[#2ea043]' : '' }}
                                                 {{ $task->status->color() === 'blue'  ? 'bg-[#152e42] text-[#79c0ff] border-[#1f6feb]' : '' }}
                                                 {{ $task->status->color() === 'yellow'? 'bg-[#362808] text-[#d29922] border-[#9e6a03]' : '' }}
-                                                {{ $task->status->color() === 'gray'  ? 'bg-[#26282e] text-[#8b949e] border-[#30363d]' : '' }}">
+                                                {{ $task->status->color() === 'gray'  ? 'bg-[#26282e] text-[#8b949e] border-[#30363d]' : '' }}
+                                                {{ $task->status->color() === 'red'   ? 'bg-[#3b1219] text-[#f85149] border-[#da3633]' : '' }}">
 
                                                 <span class="mr-1.5 opacity-70">
                                                     @if($task->status->color() === 'green') ✓ 
                                                     @elseif($task->status->color() === 'blue') ▶
                                                     @elseif($task->status->color() === 'yellow') ⏸
+                                                    @elseif($task->status->color() === 'red') ✕
                                                     @else • @endif
                                                 </span>
 
@@ -229,7 +269,7 @@
                                     </td>
                                     <td class="p-4">
                                         <div class="flex items-center gap-2">
-                                            <span class="font-medium text-[#d4d4d4] group-hover:text-white transition-colors">{{ $task->title }}@if($task->is_persistent) <span class="text-[#569cd6]" title="Tarea Persistente">🔁</span>@endif</span>
+                                            <span class="font-medium text-[#d4d4d4] group-hover:text-white transition-colors {{ $task->status->value === 'cancelled' ? 'line-through' : '' }}">{{ $task->title }}@if($task->is_persistent) <span class="text-[#569cd6]" title="Tarea Persistente">🔁</span>@endif</span>
                                             <button 
                                                 wire:click="$dispatch('openTaskDetails', { taskId: {{ $task->id }} })"
                                                 @click.stop
@@ -241,7 +281,8 @@
                                     <td class="p-4 text-left" @click.stop>
                                         @if($task->subtasks->count() > 0)
                                             <select wire:model="selectedSubtask.{{ $task->id }}" 
-                                                    class="max-w-xs px-2 py-1.5 text-xs bg-[#3c3c3c] border border-[#333] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] focus:outline-none">
+                                                    @if($task->status->value === 'cancelled') disabled @endif
+                                                    class="max-w-xs px-2 py-1.5 text-xs bg-[#3c3c3c] border border-[#333] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] focus:outline-none {{ $task->status->value === 'cancelled' ? 'opacity-50 cursor-not-allowed' : '' }}">
                                                 <option value="">-- Tarea principal --</option>
                                                 @foreach($task->subtasks as $subtask)
                                                     <option value="{{ $subtask->id }}">{{ $subtask->title }}</option>
@@ -282,9 +323,23 @@
                                                      style="width: {{ $task->progress }}%"></div>
                                             </div>
                                         </div>
-                                        <div class="flex gap-2">
-                                            <input type="number" @click.stop placeholder="0" wire:model="minutesInput.{{ $task->id }}" wire:keydown.enter="addTime({{ $task->id }})" class="w-full px-2 py-1 text-xs bg-[#3c3c3c] border border-[#333] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:ring-1 focus:ring-[#007fd4] focus:outline-none placeholder-[#666]">
-                                            <button wire:click="addTime({{ $task->id }})" @click.stop class="px-3 py-1 bg-[#333] hover:bg-[#444] text-[#d4d4d4] rounded border border-[#333] text-xs font-bold transition-colors" title="Sumar tiempo">+</button>
+                                        <div x-data="{ timeMode: 'min' }" class="flex flex-col gap-1">
+                                            <div class="flex gap-2">
+                                                <template x-if="timeMode === 'min'">
+                                                    <input type="number" @click.stop placeholder="min" wire:model="minutesInput.{{ $task->id }}" wire:keydown.enter="addTime({{ $task->id }})" @if($task->status->value === 'cancelled') disabled @endif class="w-full px-2 py-1 text-xs bg-[#3c3c3c] border border-[#333] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:ring-1 focus:ring-[#007fd4] focus:outline-none placeholder-[#666] {{ $task->status->value === 'cancelled' ? 'opacity-50 cursor-not-allowed' : '' }}">
+                                                </template>
+                                                <template x-if="timeMode === 'hm'">
+                                                    <div class="flex gap-1 items-center w-full" @click.stop>
+                                                        <input type="number" placeholder="h" min="0" wire:model="hoursInput.{{ $task->id }}" wire:keydown.enter="addTime({{ $task->id }})" @if($task->status->value === 'cancelled') disabled @endif class="w-1/2 px-2 py-1 text-xs bg-[#3c3c3c] border border-[#333] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:ring-1 focus:ring-[#007fd4] focus:outline-none placeholder-[#666] {{ $task->status->value === 'cancelled' ? 'opacity-50 cursor-not-allowed' : '' }}">
+                                                        <span class="text-[#7b7b7b] text-[10px]">:</span>
+                                                        <input type="number" placeholder="m" min="0" max="59" wire:model="minutesInput.{{ $task->id }}" wire:keydown.enter="addTime({{ $task->id }})" @if($task->status->value === 'cancelled') disabled @endif class="w-1/2 px-2 py-1 text-xs bg-[#3c3c3c] border border-[#333] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:ring-1 focus:ring-[#007fd4] focus:outline-none placeholder-[#666] {{ $task->status->value === 'cancelled' ? 'opacity-50 cursor-not-allowed' : '' }}">
+                                                    </div>
+                                                </template>
+                                                <button wire:click="addTime({{ $task->id }})" @click.stop @if($task->status->value === 'cancelled') disabled @endif class="px-3 py-1 bg-[#333] hover:bg-[#444] text-[#d4d4d4] rounded border border-[#333] text-xs font-bold transition-colors flex-shrink-0 {{ $task->status->value === 'cancelled' ? 'opacity-50 cursor-not-allowed' : '' }}" title="Sumar tiempo">+</button>
+                                            </div>
+                                            <button @click.stop @click="timeMode = timeMode === 'min' ? 'hm' : 'min'" class="px-2 py-0.5 text-[10px] font-medium text-[#ffffff] bg-[#007fd4] border border-[#30363d] rounded hover:bg-[#152e42] hover:border-[#1f6feb] transition-all" type="button">
+                                                <span x-text="timeMode === 'min' ? '⏱ Cargar hora:min' : '⏱ Cargar min'"></span>
+                                            </button>
                                         </div>
                                     </td>
                                     <td class="p-4 text-right">
@@ -337,6 +392,15 @@
         <button @click="$wire.dispatch('openDuplicateTask', { taskId: ctxMenu.taskId }); ctxMenu.show = false" 
                 class="w-full text-left px-4 py-2 text-sm text-[#d4d4d4] hover:bg-[#094771] flex items-center gap-2 transition-colors">
             📋 Duplicar
+        </button>
+        <div class="border-t border-[#333] my-1"></div>
+        <button @click="$wire.cancelTask(ctxMenu.taskId); ctxMenu.show = false" 
+                class="w-full text-left px-4 py-2 text-sm text-[#f85149] hover:bg-[#3b1219] flex items-center gap-2 transition-colors">
+            ✕ Cancelar tarea
+        </button>
+        <button @click="$wire.reactivateTask(ctxMenu.taskId); ctxMenu.show = false" 
+                class="w-full text-left px-4 py-2 text-sm text-[#4ec9b0] hover:bg-[#1e3a23] flex items-center gap-2 transition-colors">
+            ↩ Reactivar tarea
         </button>
     </div>
 

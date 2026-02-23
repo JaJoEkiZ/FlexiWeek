@@ -84,6 +84,17 @@ class TaskForm extends Component
 
     public function save()
     {
+        // Bloquear edición de tareas canceladas
+        if ($this->taskId) {
+            $existingTask = Task::find($this->taskId);
+            if ($existingTask && $existingTask->status === TaskStatus::Cancelled) {
+                session()->flash('message', 'No se puede editar una tarea cancelada.');
+                $this->isOpen = false;
+
+                return;
+            }
+        }
+
         // Convertir a enteros para ignorar ceros a la izquierda
         $this->hours = (int) $this->hours;
         $this->minutes = (int) $this->minutes;

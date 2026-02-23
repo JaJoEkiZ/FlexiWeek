@@ -149,7 +149,7 @@ class PeriodForm extends Component
             ->get()
             ->groupBy('title')
             ->map(fn ($group) => $group->sortByDesc(fn ($t) => $t->period->start_date)->first())
-            ->filter(fn ($task) => $task->is_persistent);
+            ->filter(fn ($task) => $task->is_persistent && $task->status !== \App\Enums\TaskStatus::Cancelled);
 
         $order = 1;
         foreach ($latestTasks as $sourceTask) {

@@ -8,24 +8,27 @@ enum TaskStatus: string
     case InProgress = 'in_progress';
     case Paused = 'paused';
     case Completed = 'completed';
+    case Cancelled = 'cancelled';
 
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::Pending => 'Pendiente',
             self::InProgress => 'En Curso',
             self::Paused => 'Pausada',
             self::Completed => 'Finalizada',
+            self::Cancelled => 'Cancelada',
         };
     }
-    
+
     public function color(): string
     {
-        return match($this) {
+        return match ($this) {
             self::Pending => 'gray',
             self::InProgress => 'blue',
             self::Paused => 'yellow',
             self::Completed => 'green',
+            self::Cancelled => 'red',
         };
     }
 }

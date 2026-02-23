@@ -19,6 +19,8 @@ class WeeklyPlanner extends Component
 
     public $minutesInput = [];
 
+    public $hoursInput = [];
+
     public $selectedSubtask = [];
 
     // Estado del Modal de Edición (Ahora manejado por TaskForm)
@@ -44,13 +46,13 @@ class WeeklyPlanner extends Component
     {
         $task = Task::findOrFail($taskId);
 
-        if ($task->progress >= 100) {
+        if ($task->progress >= 100 || $task->status === TaskStatus::Cancelled) {
             return;
         }
 
-        // Excluimos 'Completed' del ciclo manual
+        // Excluimos 'Completed' y 'Cancelled' del ciclo manual
         $statuses = collect(TaskStatus::cases())
-            ->filter(fn ($s) => $s !== TaskStatus::Completed)
+            ->filter(fn ($s) => $s !== TaskStatus::Completed && $s !== TaskStatus::Cancelled)
             ->values();
 
         $currentIndex = $statuses->search($task->status);
@@ -66,14 +68,38 @@ class WeeklyPlanner extends Component
         $task->update(['status' => $nextStatus]);
     }
 
+    public function cancelTask($taskId)
+    {
+        $task = Task::findOrFail($taskId);
+        $task->update(['status' => TaskStatus::Cancelled]);
+        session()->flash('message', 'Tarea cancelada.');
+    }
+
+    public function reactivateTask($taskId)
+    {
+        $task = Task::findOrFail($taskId);
+        $task->update(['status' => TaskStatus::Pending]);
+        session()->flash('message', 'Tarea reactivada.');
+    }
+
     public function addTime($taskId)
     {
+        $task = Task::findOrFail($taskId);
+
+        if ($task->status === TaskStatus::Cancelled) {
+            session()->flash('message', 'No se puede agregar tiempo a una tarea cancelada.');
+
+            return;
+        }
+
         // Si hay una subtarea seleccionada, usar addTimeToSubtask
         if (! empty($this->selectedSubtask[$taskId])) {
             return $this->addTimeToSubtask($taskId);
         }
 
-        $minutes = (int) ($this->minutesInput[$taskId] ?? 0);
+        $hours = (int) ($this->hoursInput[$taskId] ?? 0);
+        $mins = (int) ($this->minutesInput[$taskId] ?? 0);
+        $minutes = ($hours * 60) + $mins;
 
         if ($minutes > 0) {
             TaskTimeLog::create([
@@ -82,11 +108,10 @@ class WeeklyPlanner extends Component
                 'log_date' => now(),
             ]);
 
-            $this->minutesInput[$taskId] = ''; // Limpiar input
+            $this->minutesInput[$taskId] = '';
+            $this->hoursInput[$taskId] = '';
 
             // Verificar si llegamos al 100% para completar la tarea
-            $task = Task::find($taskId);
-
             if ($task->progress >= 100 && $task->status !== TaskStatus::Completed) {
                 $task->update(['status' => TaskStatus::Completed]);
                 session()->flash('message', "¡Tarea completada! Se cargaron {$minutes} minutos.");
@@ -102,8 +127,18 @@ class WeeklyPlanner extends Component
 
     public function addTimeToSubtask($taskId)
     {
+        $task = Task::findOrFail($taskId);
+
+        if ($task->status === TaskStatus::Cancelled) {
+            session()->flash('message', 'No se puede agregar tiempo a una tarea cancelada.');
+
+            return;
+        }
+
         $subtaskId = $this->selectedSubtask[$taskId] ?? null;
-        $minutes = (int) ($this->minutesInput[$taskId] ?? 0);
+        $hours = (int) ($this->hoursInput[$taskId] ?? 0);
+        $mins = (int) ($this->minutesInput[$taskId] ?? 0);
+        $minutes = ($hours * 60) + $mins;
 
         if ($subtaskId && $minutes > 0) {
             $subtask = \App\Models\Subtask::find($subtaskId);
@@ -113,8 +148,7 @@ class WeeklyPlanner extends Component
                 $subtask->save();
 
                 // Verificar si llegamos al 100% para completar la tarea
-                $task = Task::find($taskId);
-                if ($task && $task->progress >= 100 && $task->status !== TaskStatus::Completed) {
+                if ($task->progress >= 100 && $task->status !== TaskStatus::Completed) {
                     $task->update(['status' => TaskStatus::Completed]);
                     session()->flash('message', "¡Tarea completada! Se cargaron {$minutes} minutos a la subtarea '{$subtask->title}'.");
                 } else {
@@ -123,6 +157,7 @@ class WeeklyPlanner extends Component
 
                 // Limpiar inputs
                 $this->minutesInput[$taskId] = '';
+                $this->hoursInput[$taskId] = '';
                 $this->selectedSubtask[$taskId] = null;
             }
         }
