@@ -1,0 +1,186 @@
+<?php
+
+namespace App\Livewire\Components;
+
+use App\Enums\TaskStatus;
+use App\Models\Period;
+use App\Models\Task;
+use Livewire\Component;
+
+class PeriodMetrics extends Component
+{
+    public $selectedPeriodId;
+
+    // Modo: 'period' o 'range'
+    public $mode = 'period';
+
+    // Rango arbitrario
+    public $rangeStart;
+
+    public $rangeEnd;
+
+    protected $listeners = ['periodSelected' => 'updatePeriod'];
+
+    public function mount($selectedPeriodId = null)
+    {
+        $this->selectedPeriodId = $selectedPeriodId;
+
+        // Defaults para rango
+        $this->rangeStart = now()->startOfMonth()->format('Y-m-d');
+        $this->rangeEnd = now()->endOfMonth()->format('Y-m-d');
+    }
+
+    public function updatePeriod($periodId)
+    {
+        $this->selectedPeriodId = $periodId;
+    }
+
+    public function switchMode($mode)
+    {
+        $this->mode = $mode;
+    }
+
+    public function getMetricsProperty()
+    {
+        if ($this->mode === 'range') {
+            return $this->calculateRangeMetrics();
+        }
+
+        return $this->calculatePeriodMetrics();
+    }
+
+    private function calculatePeriodMetrics()
+    {
+        if (! $this->selectedPeriodId) {
+            return $this->emptyMetrics();
+        }
+
+        $period = Period::find($this->selectedPeriodId);
+        if (! $period) {
+            return $this->emptyMetrics();
+        }
+
+        $tasks = Task::where('period_id', $this->selectedPeriodId)
+            ->with(['subtasks', 'timeLogs'])
+            ->get();
+
+        return $this->buildMetrics($tasks, $period->name, $period->start_date, $period->end_date);
+    }
+
+    private function calculateRangeMetrics()
+    {
+        if (! $this->rangeStart || ! $this->rangeEnd) {
+            return $this->emptyMetrics();
+        }
+
+        // Buscar períodos que se solapan con el rango
+        $periods = Period::where('user_id', auth()->id())
+            ->where('start_date', '<=', $this->rangeEnd)
+            ->where('end_date', '>=', $this->rangeStart)
+            ->get();
+
+        if ($periods->isEmpty()) {
+            return $this->emptyMetrics();
+        }
+
+        // Obtener todas las tareas de esos períodos
+        $periodIds = $periods->pluck('id');
+        $tasks = Task::whereIn('period_id', $periodIds)
+            ->with(['subtasks', 'timeLogs'])
+            ->get();
+
+        $label = "Rango: {$this->rangeStart} a {$this->rangeEnd}";
+
+        return $this->buildMetrics($tasks, $label, $this->rangeStart, $this->rangeEnd, $periods->count());
+    }
+
+    private function buildMetrics($tasks, $label, $startDate, $endDate, $periodsCount = 1)
+    {
+        $total = $tasks->count();
+        $completed = $tasks->where('status', TaskStatus::Completed)->count();
+        $pending = $tasks->where('status', TaskStatus::Pending)->count();
+        $inProgress = $tasks->where('status', TaskStatus::InProgress)->count();
+        $paused = $tasks->where('status', TaskStatus::Paused)->count();
+        $cancelled = $tasks->where('status', TaskStatus::Cancelled)->count();
+
+        $totalEstimated = $tasks->sum('effective_estimated_minutes');
+        $totalSpent = $tasks->sum('effective_spent_minutes');
+
+        $overTimeTasks = $tasks->filter(fn ($t) => $t->effective_spent_minutes > $t->effective_estimated_minutes && $t->effective_estimated_minutes > 0);
+
+        $avgTimePerTask = $total > 0 ? round($totalSpent / $total) : 0;
+
+        $completionRate = $total > 0 ? round(($completed / $total) * 100) : 0;
+
+        return [
+            'label' => $label,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+            'periodsCount' => $periodsCount,
+            'total' => $total,
+            'completed' => $completed,
+            'pending' => $pending,
+            'inProgress' => $inProgress,
+            'paused' => $paused,
+            'cancelled' => $cancelled,
+            'totalEstimated' => $totalEstimated,
+            'totalSpent' => $totalSpent,
+            'overTimeCount' => $overTimeTasks->count(),
+            'avgTimePerTask' => $avgTimePerTask,
+            'completionRate' => $completionRate,
+            // Datos para Chart.js
+            'statusChart' => [
+                'labels' => ['Completadas', 'Pendientes', 'En Curso', 'Pausadas', 'Canceladas'],
+                'data' => [$completed, $pending, $inProgress, $paused, $cancelled],
+                'colors' => ['#4ec9b0', '#8b949e', '#79c0ff', '#d29922', '#f85149'],
+            ],
+            'timeChart' => [
+                'labels' => $tasks->pluck('title')->take(15)->toArray(),
+                'estimated' => $tasks->take(15)->pluck('effective_estimated_minutes')->toArray(),
+                'spent' => $tasks->take(15)->pluck('effective_spent_minutes')->toArray(),
+            ],
+        ];
+    }
+
+    private function emptyMetrics()
+    {
+        return [
+            'label' => 'Sin datos',
+            'startDate' => null,
+            'endDate' => null,
+            'periodsCount' => 0,
+            'total' => 0,
+            'completed' => 0,
+            'pending' => 0,
+            'inProgress' => 0,
+            'paused' => 0,
+            'cancelled' => 0,
+            'totalEstimated' => 0,
+            'totalSpent' => 0,
+            'overTimeCount' => 0,
+            'avgTimePerTask' => 0,
+            'completionRate' => 0,
+            'statusChart' => ['labels' => [], 'data' => [], 'colors' => []],
+            'timeChart' => ['labels' => [], 'estimated' => [], 'spent' => []],
+        ];
+    }
+
+    public function render()
+    {
+        $periods = Period::where('user_id', auth()->id())
+            ->orderBy('start_date', 'desc')
+            ->get();
+
+        $metrics = $this->metrics;
+
+        // Dispatch event para actualizar gráficos Chart.js
+        if ($metrics['total'] > 0) {
+            $this->dispatch('metricsUpdated', $metrics);
+        }
+
+        return view('livewire.components.period-metrics', [
+            'metrics' => $metrics,
+            'periods' => $periods,
+        ]);
+    }
+}

@@ -7,8 +7,10 @@
     <link rel="icon" type="image/png" href="{{ asset('images/flexiweek-Iso.png') }}">
     
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-[#1e1e1e] text-[#d4d4d4] font-sans antialiased min-h-screen flex flex-col">
+    <style>[x-cloak] { display: none !important; }</style>
     
     <main class="flex-1">
         {{ $slot }}

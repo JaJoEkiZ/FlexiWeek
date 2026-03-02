@@ -69,6 +69,7 @@
                 <div class="bg-[#252526] border border-[#333] px-2 md:px-4 py-1 md:py-1.5 rounded text-[10px] md:text-xs font-mono text-[#4ec9b0] shadow-sm">
                     Tareas: <span class="text-[#b5cea8]">{{ $currentPeriod->tasks->count() }}</span>
                 </div>
+
                 <button wire:click="openTaskForm" class="bg-[#007fd4] hover:bg-[#006cb5] text-white px-3 md:px-4 py-1.5 md:py-2 rounded-sm text-xs md:text-sm font-medium transition-colors flex items-center gap-1 md:gap-2 shadow-sm">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 md:h-4 md:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />

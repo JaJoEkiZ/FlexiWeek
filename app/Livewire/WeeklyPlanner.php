@@ -17,6 +17,8 @@ class WeeklyPlanner extends Component
 
     public $selectedPeriodId;
 
+    public $activeTab = 'tasks';
+
     public $minutesInput = [];
 
     public $hoursInput = [];
@@ -167,7 +169,13 @@ class WeeklyPlanner extends Component
         'taskSaved' => 'taskSaved',
         'periodSaved' => '$refresh',
         'periodSelected' => 'selectPeriod',
+        'setActiveTab' => 'setActiveTab',
     ];
+
+    public function setActiveTab($tab)
+    {
+        $this->activeTab = $tab;
+    }
 
     public function taskSaved()
     {
