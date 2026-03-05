@@ -22,7 +22,7 @@
                 <livewire:components.task-navbar :selectedPeriodId="$currentPeriod->id" wire:key="navbar-{{ $currentPeriod->id }}" />
             </div>
             
-            {{-- Tab Toggle: Tareas / Métricas --}}
+            {{-- Tab Toggle: Tareas / Métricas / Pizarra --}}
             <div class="flex-shrink-0 bg-[#1e1e1e] px-3 lg:px-8 pt-3">
                 <div class="inline-flex bg-[#252526] rounded border border-[#333] overflow-hidden shadow-sm">
                     <button wire:click="setActiveTab('tasks')"
@@ -35,10 +35,15 @@
                             {{ $activeTab === 'metrics' ? 'bg-[#007fd4] text-white' : 'text-[#8b949e] hover:text-white hover:bg-[#333]' }}">
                         📊 Métricas
                     </button>
+                    <button wire:click="setActiveTab('board')"
+                            class="px-3 md:px-4 py-1.5 md:py-2 text-[10px] md:text-xs font-medium transition-all flex items-center gap-1
+                            {{ $activeTab === 'board' ? 'bg-[#007fd4] text-white' : 'text-[#8b949e] hover:text-white hover:bg-[#333]' }}">
+                        🎨 Pizarra
+                    </button>
                 </div>
             </div>
             
-            <div class="flex-1 overflow-y-auto custom-scrollbar p-3 lg:p-8 pb-24 lg:pb-8">
+            <div class="flex-1 {{ $activeTab === 'board' ? 'overflow-hidden' : 'overflow-y-auto custom-scrollbar p-3 lg:p-8 pb-24 lg:pb-8' }}">
 
                 {{-- ===== VISTA MÉTRICAS ===== --}}
                 @if($activeTab === 'metrics')
@@ -388,6 +393,11 @@
                     {{ $tasks->links() }}
                 </div>
                 @endif {{-- cierre @if tasks --}}
+
+                {{-- ===== VISTA PIZARRA ===== --}}
+                @if($activeTab === 'board')
+                    <livewire:components.pizarra wire:key="pizarra-{{ $currentPeriod->id }}" />
+                @endif
             </div>
         @else
             <div class="flex flex-col items-center justify-center h-full text-[#7b7b7b]">
