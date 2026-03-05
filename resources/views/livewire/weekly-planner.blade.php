@@ -417,6 +417,12 @@
                 class="w-full text-left px-4 py-2 text-sm text-[#d4d4d4] hover:bg-[#094771] flex items-center gap-2 transition-colors">
             📋 Duplicar
         </button>
+        <button @click="$wire.finishTask(ctxMenu.taskId); ctxMenu.show = false" 
+                class="w-full text-left px-4 py-2 text-sm text-[#7ee787] hover:bg-[#1e3a23] flex items-center gap-2 transition-colors">
+            ✓ Finalizar tarea
+        </button>
+
+
         <div class="border-t border-[#333] my-1"></div>
         <button @click="$wire.cancelTask(ctxMenu.taskId); ctxMenu.show = false" 
                 class="w-full text-left px-4 py-2 text-sm text-[#f85149] hover:bg-[#3b1219] flex items-center gap-2 transition-colors">
