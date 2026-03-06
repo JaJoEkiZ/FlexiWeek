@@ -309,11 +309,12 @@
                     left: (panX + item.pos_x * scale) + 'px',
                     top:  (panY + item.pos_y * scale) + 'px',
                     width:  (item.width  * scale) + 'px',
-                    height: (item.height * scale) + 'px',
+                    minHeight: Math.max(70, item.height) * scale + 'px',
+                    height: 'auto',
                     borderColor: item.color + '55',
                     pointerEvents: 'all',
                     minWidth: '120px',
-                    minHeight: '80px',
+                    zIndex: item.z_index || 0,
                 }"
                 @mousedown.stop="onItemMousedown($event, item)"
                 @dblclick.stop="openPanel(item)"
@@ -458,6 +459,21 @@
                 <div class="pz-context-item" @click="startConnect(contextMenu.target); contextMenu.visible=false">
                     ⟶ Conectar
                 </div>
+                <div class="pz-context-sep"></div>
+                
+                {{-- Submenú de Ordenar --}}
+                <div class="pz-context-item group relative">
+                    ↕️ Ordenar <span style="margin-left: auto; font-size: 10px;">▶</span>
+                    <div class="absolute left-[95%] top-0 hidden group-hover:block bg-[#252526] border border-[#333] rounded-md py-1 w-40 z-[300] shadow-xl">
+                        <div class="pz-context-item" @click.stop="$wire.bringToFront(contextMenu.target.id).then(() => $wire.loadItems().then(d => items = d)); contextMenu.visible=false">
+                            ⬆️ Traer al frente
+                        </div>
+                        <div class="pz-context-item" @click.stop="$wire.sendToBack(contextMenu.target.id).then(() => $wire.loadItems().then(d => items = d)); contextMenu.visible=false">
+                            ⬇️ Enviar al fondo
+                        </div>
+                    </div>
+                </div>
+
                 <div class="pz-context-sep"></div>
                 <div class="pz-colors" style="padding: 6px 8px; gap:5px;">
                     <template x-for="c in colors" :key="c">

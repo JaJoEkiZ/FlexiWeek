@@ -15,6 +15,7 @@ class BoardItem extends Model
         'width',
         'height',
         'color',
+        'z_index',
     ];
 
     protected $casts = [
@@ -22,6 +23,7 @@ class BoardItem extends Model
         'pos_y' => 'float',
         'width' => 'float',
         'height' => 'float',
+        'z_index' => 'integer',
     ];
 
     public function user()
