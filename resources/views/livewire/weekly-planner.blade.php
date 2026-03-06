@@ -22,7 +22,7 @@
                 <livewire:components.task-navbar :selectedPeriodId="$currentPeriod->id" wire:key="navbar-{{ $currentPeriod->id }}" />
             </div>
             
-            {{-- Tab Toggle: Tareas / Métricas --}}
+            {{-- Tab Toggle: Tareas / Métricas / Pizarra --}}
             <div class="flex-shrink-0 bg-[#1e1e1e] px-3 lg:px-8 pt-3">
                 <div class="inline-flex bg-[#252526] rounded border border-[#333] overflow-hidden shadow-sm">
                     <button wire:click="setActiveTab('tasks')"
@@ -35,10 +35,15 @@
                             {{ $activeTab === 'metrics' ? 'bg-[#007fd4] text-white' : 'text-[#8b949e] hover:text-white hover:bg-[#333]' }}">
                         📊 Métricas
                     </button>
+                    <button wire:click="setActiveTab('board')"
+                            class="px-3 md:px-4 py-1.5 md:py-2 text-[10px] md:text-xs font-medium transition-all flex items-center gap-1
+                            {{ $activeTab === 'board' ? 'bg-[#007fd4] text-white' : 'text-[#8b949e] hover:text-white hover:bg-[#333]' }}">
+                        🎨 Pizarra
+                    </button>
                 </div>
             </div>
             
-            <div class="flex-1 overflow-y-auto custom-scrollbar p-3 lg:p-8 pb-24 lg:pb-8">
+            <div class="flex-1 {{ $activeTab === 'board' ? 'overflow-hidden' : 'overflow-y-auto custom-scrollbar p-3 lg:p-8 pb-24 lg:pb-8' }}">
 
                 {{-- ===== VISTA MÉTRICAS ===== --}}
                 @if($activeTab === 'metrics')
@@ -53,8 +58,9 @@
                         <div 
                             data-task-id="{{ $task->id }}"
                             wire:key="task-mobile-{{ $task->id }}"
+                            @dblclick="openTaskForm({{ $task->id }})"
                             @contextmenu.prevent="ctxMenu = { show: true, x: $event.clientX, y: $event.clientY, taskId: {{ $task->id }} }"
-                            class="bg-[#252526] rounded-md border border-[#333] p-4 space-y-3 shadow-sm select-none {{ $task->status->value === 'cancelled' ? 'opacity-60' : '' }}"
+                            class="bg-[#2a2d2e] rounded border border-[#30363d] p-3 mb-2 transition-all shadow-sm relative overflow-hidden {{ $task->status->value === 'cancelled' ? 'opacity-60' : '' }}"
                         >
                             {{-- Fila 1: Handle + Estado + Título + Acciones --}}
                             <div class="flex items-start justify-between gap-2">
@@ -255,7 +261,7 @@
                                 <tr 
                                     data-task-id="{{ $task->id }}"
                                     wire:key="task-desktop-{{ $task->id }}" 
-                                    wire:click="openTaskForm({{ $task->id }})"
+                                    @dblclick="$wire.openTaskForm({{ $task->id }})"
                                     @contextmenu.prevent="ctxMenu = { show: true, x: $event.clientX, y: $event.clientY, taskId: {{ $task->id }} }"
                                     class="hover:bg-[#2a2d2e] transition-colors group cursor-pointer {{ $task->status->value === 'cancelled' ? 'opacity-60' : '' }}"
                                 >
@@ -388,6 +394,11 @@
                     {{ $tasks->links() }}
                 </div>
                 @endif {{-- cierre @if tasks --}}
+
+                {{-- ===== VISTA PIZARRA ===== --}}
+                @if($activeTab === 'board')
+                    <livewire:components.pizarra wire:key="pizarra-{{ $currentPeriod->id }}" />
+                @endif
             </div>
         @else
             <div class="flex flex-col items-center justify-center h-full text-[#7b7b7b]">
@@ -417,6 +428,12 @@
                 class="w-full text-left px-4 py-2 text-sm text-[#d4d4d4] hover:bg-[#094771] flex items-center gap-2 transition-colors">
             📋 Duplicar
         </button>
+        <button @click="$wire.finishTask(ctxMenu.taskId); ctxMenu.show = false" 
+                class="w-full text-left px-4 py-2 text-sm text-[#7ee787] hover:bg-[#1e3a23] flex items-center gap-2 transition-colors">
+            ✓ Finalizar tarea
+        </button>
+
+
         <div class="border-t border-[#333] my-1"></div>
         <button @click="$wire.cancelTask(ctxMenu.taskId); ctxMenu.show = false" 
                 class="w-full text-left px-4 py-2 text-sm text-[#f85149] hover:bg-[#3b1219] flex items-center gap-2 transition-colors">
@@ -465,13 +482,19 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
     <script>
-        document.addEventListener('livewire:navigated', initSortable);
-        document.addEventListener('DOMContentLoaded', initSortable);
+        document.addEventListener('livewire:initialized', () => {
+            initSortable();
+
+            Livewire.hook('morph.updated', ({ component, el }) => {
+                initSortable();
+            });
+        });
         
         function initSortable() {
             // 1. Sortable para ESCRITORIO (Tabla)
             const tbody = document.getElementById('tasks-tbody');
             if (tbody) {
+                if (Sortable.get(tbody)) Sortable.get(tbody).destroy();
                 new Sortable(tbody, {
                     group: { name: 'tasks', pull: true, put: false }, // Permite sacar tareas hacia el sidebar
                     animation: 300,
@@ -491,6 +514,7 @@
             // 2. Sortable para MÓVIL (Tarjetas)
             const mobileContainer = document.getElementById('mobile-tasks-container');
             if (mobileContainer) {
+                if (Sortable.get(mobileContainer)) Sortable.get(mobileContainer).destroy();
                 new Sortable(mobileContainer, {
                     group: { name: 'tasks', pull: true, put: false },
                     animation: 300,
@@ -512,6 +536,7 @@
             // 3. Drop Zones del Sidebar (Para mover tareas entre semanas)
             const periodDropZones = document.querySelectorAll('.period-drop-zone');
             periodDropZones.forEach(function(zone) {
+                if (Sortable.get(zone)) Sortable.get(zone).destroy();
                 new Sortable(zone, {
                     group: { name: 'tasks', put: true, pull: false }, // Solo recibe
                     sort: false, 
@@ -528,9 +553,6 @@
                         
                         // Llamada Livewire
                         @this.call('moveTaskToPeriod', taskId, newPeriodId);
-                        
-                        // Limpieza DOM
-                        evt.item.remove();
                     },
                     // Gestión de highlights visuales
                     onMove: function(evt) {

@@ -69,6 +69,20 @@ class WeeklyPlanner extends Component
 
         $task->update(['status' => $nextStatus]);
     }
+    public function finishTask($taskId)
+    {
+        $task = Task::findOrFail($taskId);
+        if ($task->status === TaskStatus::Cancelled) {
+            session()->flash('message', 'No se puede finalizar una tarea cancelada.');
+            return;
+        }
+        if ($task->status === TaskStatus::Completed) {
+            session()->flash('message', 'La tarea ya está finalizada.');
+            return;
+        }
+        $task->update(['status' => TaskStatus::Completed]);
+        session()->flash('message', '¡Tarea finalizada manualmente!');
+    }
 
     public function cancelTask($taskId)
     {
