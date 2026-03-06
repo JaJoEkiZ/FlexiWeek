@@ -2,9 +2,13 @@
 
 namespace App\Livewire\Components;
 
+use App\Enums\TaskStatus;
+use App\Models\BoardConection;
 use App\Models\BoardItem;
 use App\Models\BoardItemSubtask;
-use App\Models\BoardConection;
+use App\Models\Period;
+use App\Models\Subtask;
+use App\Models\Task;
 use Livewire\Component;
 
 class Pizarra extends Component
@@ -22,6 +26,7 @@ class Pizarra extends Component
             ->where('user_id', auth()->id())
             ->get()
             ->toArray();
+
         return $this->items;
     }
 
@@ -29,13 +34,13 @@ class Pizarra extends Component
     {
         BoardItem::create([
             'user_id' => auth()->id(),
-            'title'   => 'Nueva idea',
-            'notes'   => null,
-            'pos_x'   => $x,
-            'pos_y'   => $y,
-            'width'   => 200,
-            'height'  => 150,
-            'color'   => '#3B82F6',
+            'title' => 'Nueva idea',
+            'notes' => null,
+            'pos_x' => $x,
+            'pos_y' => $y,
+            'width' => 200,
+            'height' => 150,
+            'color' => '#3B82F6',
         ]);
 
         $this->loadItems();
@@ -43,24 +48,24 @@ class Pizarra extends Component
 
     public function updateItem($id, $data)
     {
-    $item = BoardItem::where('id', $id)
-        ->where('user_id', auth()->id())
-        ->firstOrFail();
+        $item = BoardItem::where('id', $id)
+            ->where('user_id', auth()->id())
+            ->firstOrFail();
 
-    $allowed = ['title', 'notes', 'pos_x', 'pos_y', 'width', 'height', 'color'];
+        $allowed = ['title', 'notes', 'pos_x', 'pos_y', 'width', 'height', 'color'];
 
-    $filtered = array_intersect_key($data, array_flip($allowed));
+        $filtered = array_intersect_key($data, array_flip($allowed));
 
-    // Forzar que las coordenadas sean floats limpios
-    foreach (['pos_x', 'pos_y', 'width', 'height'] as $numField) {
-        if (isset($filtered[$numField])) {
-            $filtered[$numField] = round((float) $filtered[$numField], 4);
+        // Forzar que las coordenadas sean floats limpios
+        foreach (['pos_x', 'pos_y', 'width', 'height'] as $numField) {
+            if (isset($filtered[$numField])) {
+                $filtered[$numField] = round((float) $filtered[$numField], 4);
+            }
         }
-    }
 
-    $item->update($filtered);
+        $item->update($filtered);
 
-    $this->loadItems();
+        $this->loadItems();
     }
 
     public function deleteItem($id)
@@ -83,8 +88,8 @@ class Pizarra extends Component
 
         BoardItemSubtask::create([
             'board_item_id' => $item->id,
-            'title'         => $title,
-            'is_completed'  => false,
+            'title' => $title,
+            'is_completed' => false,
         ]);
 
         $this->loadItems();
@@ -93,13 +98,13 @@ class Pizarra extends Component
     public function toggleSubtask($subtaskId)
     {
         $subtask = BoardItemSubtask::whereHas('boardItem', function ($q) {
-                $q->where('user_id', auth()->id());
-            })
+            $q->where('user_id', auth()->id());
+        })
             ->where('id', $subtaskId)
             ->firstOrFail();
 
         $subtask->update([
-            'is_completed' => !$subtask->is_completed,
+            'is_completed' => ! $subtask->is_completed,
         ]);
 
         $this->loadItems();
@@ -108,8 +113,8 @@ class Pizarra extends Component
     public function deleteSubtask($subtaskId)
     {
         BoardItemSubtask::whereHas('boardItem', function ($q) {
-                $q->where('user_id', auth()->id());
-            })
+            $q->where('user_id', auth()->id());
+        })
             ->where('id', $subtaskId)
             ->delete();
 
@@ -132,11 +137,11 @@ class Pizarra extends Component
             ->where('to_item_id', $toId)
             ->exists();
 
-        if (!$exists) {
+        if (! $exists) {
             BoardConection::create([
                 'from_item_id' => $fromId,
-                'to_item_id'   => $toId,
-                'type'         => $type,
+                'to_item_id' => $toId,
+                'type' => $type,
             ]);
         }
 
@@ -146,12 +151,82 @@ class Pizarra extends Component
     public function deleteConnection($connectionId)
     {
         BoardConection::whereHas('fromItem', function ($q) {
-                $q->where('user_id', auth()->id());
-            })
+            $q->where('user_id', auth()->id());
+        })
             ->where('id', $connectionId)
             ->delete();
 
         $this->loadItems();
+    }
+
+    public function getActivePeriods()
+    {
+        return Period::where('user_id', auth()->id())
+            ->where('end_date', '>=', now()->format('Y-m-d'))
+            ->orderBy('start_date', 'asc')
+            ->get()
+            ->toArray();
+    }
+
+    public function promoteToTask($itemId, $periodId, $promotedIds = [])
+    {
+        // Evitar ciclos infinitos en caso de conexiones circulares
+        if (in_array($itemId, $promotedIds)) {
+            return $promotedIds;
+        }
+
+        $item = BoardItem::with(['subtasks', 'connectionsFrom'])
+            ->where('id', $itemId)
+            ->where('user_id', auth()->id())
+            ->first();
+
+        if (! $item) {
+            return $promotedIds;
+        }
+
+        $promotedIds[] = $itemId;
+
+        // 1. Obtener el orden máximo en el periodo actual
+        $maxOrder = Task::where('period_id', $periodId)->max('sort_order') ?? 0;
+
+        // 2. Crear la Tarea
+        $task = Task::create([
+            'period_id' => $periodId,
+            'title' => $item->title,
+            'estimated_minutes' => 0,
+            'status' => TaskStatus::Pending,
+            'sort_order' => $maxOrder + 1,
+        ]);
+
+        // 3. Copiar las Subtareas
+        foreach ($item->subtasks as $sub) {
+            Subtask::create([
+                'task_id' => $task->id,
+                'title' => $sub->title,
+                'is_completed' => $sub->is_completed,
+                'estimated_minutes' => 0,
+                'spent_minutes' => 0,
+            ]);
+        }
+
+        // 4. Procesar dependencias en cascada (ideas que dependen de esta, es decir connectionsFrom donde esta es el origen)
+        $connections = $item->connectionsFrom; // Las conexiones que salen de esta caja
+
+        // 5. Eliminar la idea de la pizarra (esto borra subtasks y conexiones por cascade/boot)
+        $item->delete();
+
+        // 6. Promover recursivamente los hijos
+        foreach ($connections as $conn) {
+            $promotedIds = $this->promoteToTask($conn->to_item_id, $periodId, $promotedIds);
+        }
+
+        // Si es la primera llamada de la recursión, disparamos recarga
+        if (count($promotedIds) === 1 || func_num_args() === 2) {
+            $this->loadItems();
+            $this->dispatch('taskSaved'); // Actualiza el WeeklyPlanner para que muestre la nueva tarea
+        }
+
+        return $promotedIds;
     }
 
     public function render()

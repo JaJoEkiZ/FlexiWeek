@@ -452,6 +452,9 @@
                 <div class="pz-context-item" @click="openPanel(contextMenu.target); contextMenu.visible=false">
                     ✏️ Editar
                 </div>
+                <div class="pz-context-item" @click="openPeriodSelector(contextMenu.target); contextMenu.visible=false">
+                    📋 Agregar a semana
+                </div>
                 <div class="pz-context-item" @click="startConnect(contextMenu.target); contextMenu.visible=false">
                     ⟶ Conectar
                 </div>
@@ -477,6 +480,32 @@
                 </div>
             </div>
         </template>
+    </div>
+
+    {{-- ═══════════════════════════════════════════
+         MODAL SELECCION DE PERIODO
+    ═══════════════════════════════════════════ --}}
+    <div x-show="periodModal.visible" x-cloak class="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4">
+        <div class="bg-[#252526] border border-[#333] rounded-lg shadow-2xl w-full max-w-sm overflow-hidden" @click.outside="periodModal.visible = false">
+            <div class="px-4 py-3 border-b border-[#333] flex justify-between items-center">
+                <h3 class="text-[#d4d4d4] font-medium text-sm">Agregar a semana</h3>
+                <button @click="periodModal.visible = false" class="text-[#7b7b7b] hover:text-white">✕</button>
+            </div>
+            <div class="p-2 max-h-64 overflow-y-auto custom-scrollbar">
+                <template x-if="periodModal.loading">
+                    <div class="text-center py-4 text-[#7b7b7b] text-sm">Cargando semanas...</div>
+                </template>
+                <template x-if="!periodModal.loading && periodModal.periods.length === 0">
+                    <div class="text-center py-4 text-[#7b7b7b] text-sm">No hay semanas activas</div>
+                </template>
+                <template x-for="p in periodModal.periods" :key="p.id">
+                    <button @click="promoteToPeriod(p.id)" class="w-full text-left px-3 py-2 rounded mb-1 hover:bg-[#333] transition-colors flex flex-col group">
+                        <span class="text-[#d4d4d4] text-sm font-medium group-hover:text-white" x-text="p.name || 'Semana sin nombre'"></span>
+                        <span class="text-[#7b7b7b] text-xs font-mono mt-0.5" x-text="(p.start_date || '').substring(5,10) + ' - ' + (p.end_date || '').substring(5,10)"></span>
+                    </button>
+                </template>
+            </div>
+        </div>
     </div>
 
     {{-- HINT --}}
@@ -517,6 +546,9 @@
         // Menú contextual
         contextMenu: { visible: false, x: 0, y: 0, type: null, target: null },
 
+        // Modal de periodos
+        periodModal: { visible: false, targetItem: null, periods: [], loading: false },
+
         // Colores disponibles
         colors: ['#007fd4','#569cd6','#8B5CF6','#EC4899','#4ec9b0','#F59E0B','#f85149','#06B6D4','#b5cea8','#6a9955'],
 
@@ -529,6 +561,7 @@
                     this.connectSource = null;
                     this.tempLine = null;
                     this.contextMenu.visible = false;
+                    this.periodModal.visible = false;
                     if (this.panelOpen) {
                         this.closePanel();
                     }
@@ -652,6 +685,28 @@
                 const dy = (e.clientY - this.dragStart.y) / this.scale;
                 this.dragging.pos_x = this.itemStart.x + dx;
                 this.dragging.pos_y = this.itemStart.y + dy;
+
+                // Opacidad si está sobre el sidebar y desactivar eventos para elementFromPoint
+                const el = document.getElementById('pz-box-' + this.dragging.id);
+                if (el) {
+                    el.style.pointerEvents = 'none'; // Clave para que elementFromPoint vea lo que hay debajo
+                }
+
+                // Destacar periodos en sidebar
+                document.querySelectorAll('.period-drop-zone').forEach(el => el.classList.remove('ring-2', 'ring-[#007fd4]', 'bg-[#2a2d2e]'));
+                const elUnderMouse = document.elementFromPoint(e.clientX, e.clientY);
+                let overDropZone = false;
+                if (elUnderMouse) {
+                    const dropZone = elUnderMouse.closest('.period-drop-zone');
+                    if (dropZone) {
+                        dropZone.classList.add('ring-2', 'ring-[#007fd4]', 'bg-[#2a2d2e]');
+                        overDropZone = true;
+                    }
+                }
+                
+                if (el) {
+                    el.style.opacity = overDropZone ? '0.4' : '1';
+                }
             }
             if (this.connectMode && this.connectSource) {
                 const svgRect = document.getElementById('pizarra-canvas').getBoundingClientRect();
@@ -665,7 +720,31 @@
 
         onMouseup(e) {
             if (this.dragging && this.hasDragged) {
-                this.savePosition(this.dragging);
+                // Verificar si soltó sobre un periodo
+                const elUnderMouse = document.elementFromPoint(e.clientX, e.clientY);
+                const dropZone = elUnderMouse ? elUnderMouse.closest('.period-drop-zone') : null;
+                
+                // Limpiar highlights siempre
+                document.querySelectorAll('.period-drop-zone').forEach(el => el.classList.remove('ring-2', 'ring-[#007fd4]', 'bg-[#2a2d2e]'));
+
+                if (dropZone) {
+                    const periodId = dropZone.getAttribute('data-period-id');
+                    if (periodId) {
+                        this.$wire.promoteToTask(this.dragging.id, periodId).then(() => {
+                            this.reload();
+                        });
+                    }
+                } else {
+                    // Si no cayó en periodo, guardar posición en canvas
+                    this.savePosition(this.dragging);
+                }
+
+                // Restaurar estilos si quedó pegada
+                const el = document.getElementById('pz-box-' + this.dragging.id);
+                if (el) {
+                    el.style.opacity = '';
+                    el.style.pointerEvents = '';
+                }
             }
             this.isPanning = false;
             this.dragging = null;
@@ -733,6 +812,25 @@
 
         onConnectionRightclick(e, conn) {
             this.contextMenu = { visible: true, x: e.clientX, y: e.clientY, type: 'connection', target: conn };
+        },
+
+        // ─── PROMOCION A TAREA ───────────────────
+        openPeriodSelector(item) {
+            this.periodModal.targetItem = item;
+            this.periodModal.loading = true;
+            this.periodModal.visible = true;
+            this.$wire.getActivePeriods().then(periods => {
+                this.periodModal.periods = periods;
+                this.periodModal.loading = false;
+            });
+        },
+
+        promoteToPeriod(periodId) {
+            if (!this.periodModal.targetItem) return;
+            const itemId = this.periodModal.targetItem.id;
+            this.periodModal.visible = false;
+            // Al promover, se recargará automáticamente la Pizarra en el backend
+            this.$wire.promoteToTask(itemId, periodId);
         },
 
         // ─── PANEL ───────────────────────────────
