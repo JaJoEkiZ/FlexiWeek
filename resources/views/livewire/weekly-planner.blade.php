@@ -58,8 +58,9 @@
                         <div 
                             data-task-id="{{ $task->id }}"
                             wire:key="task-mobile-{{ $task->id }}"
+                            @dblclick="openTaskForm({{ $task->id }})"
                             @contextmenu.prevent="ctxMenu = { show: true, x: $event.clientX, y: $event.clientY, taskId: {{ $task->id }} }"
-                            class="bg-[#252526] rounded-md border border-[#333] p-4 space-y-3 shadow-sm select-none {{ $task->status->value === 'cancelled' ? 'opacity-60' : '' }}"
+                            class="bg-[#2a2d2e] rounded border border-[#30363d] p-3 mb-2 transition-all shadow-sm relative overflow-hidden {{ $task->status->value === 'cancelled' ? 'opacity-60' : '' }}"
                         >
                             {{-- Fila 1: Handle + Estado + Título + Acciones --}}
                             <div class="flex items-start justify-between gap-2">
@@ -260,7 +261,7 @@
                                 <tr 
                                     data-task-id="{{ $task->id }}"
                                     wire:key="task-desktop-{{ $task->id }}" 
-                                    wire:click="openTaskForm({{ $task->id }})"
+                                    @dblclick="$wire.openTaskForm({{ $task->id }})"
                                     @contextmenu.prevent="ctxMenu = { show: true, x: $event.clientX, y: $event.clientY, taskId: {{ $task->id }} }"
                                     class="hover:bg-[#2a2d2e] transition-colors group cursor-pointer {{ $task->status->value === 'cancelled' ? 'opacity-60' : '' }}"
                                 >

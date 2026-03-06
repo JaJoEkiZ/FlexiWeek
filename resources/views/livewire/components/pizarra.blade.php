@@ -249,6 +249,7 @@
     ═══════════════════════════════════════════ --}}
     <svg
         id="pizarra-canvas"
+        x-effect="connections = allConnections"
         @mousedown="onCanvasMousedown($event)"
         @mousedown.middle.prevent=""
         @wheel.prevent="onWheel($event)"
@@ -291,6 +292,55 @@
         </g>
     </svg>
 
+    {{-- ═══════════════════════════════════════════
+         CONEXIONES Y CAJAS (Capa HTML para poder usar z-index individualmente)
+    ═══════════════════════════════════════════ --}}
+    
+    <div id="pz-connections-layer" style="position:absolute;inset:0;pointer-events:none;">
+        <template x-if="connections">
+            <template x-for="conn in connections" :key="'conn-'+conn.id">
+                <div x-data="{ 
+                        path() { return getConnectionPath(conn); },
+                        fromItem() { return items.find(i => i.id == conn.from_item_id); },
+                        zIndex() { 
+                            let z = this.fromItem() ? (this.fromItem().z_index || 0) : 0; 
+                            return z > 0 ? z - 1 : 0; 
+                        },
+                        isHover() { return contextMenu.target?.id === conn.id; },
+                        color() { 
+                            if (this.isHover()) return '#007fd4';
+                            return this.fromItem() ? this.fromItem().color : '#007fd4';
+                        },
+                        hoverColor() { return '#007fd4'; }
+                     }"
+                     x-show="path()"
+                     :style="`position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:${zIndex()};`"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible;">
+                        <defs>
+                            <marker :id="`pz-arrow-${conn.id}`" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                                <path d="M0,0 L0,6 L8,3 z" fill="rgba(0,127,212,0.7)"/>
+                            </marker>
+                            <marker :id="`pz-arrow-hover-${conn.id}`" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                                <path d="M0,0 L0,6 L8,3 z" fill="#007fd4"/>
+                            </marker>
+                        </defs>
+                        <g :transform="`translate(${panX},${panY}) scale(${scale})`" 
+                           class="cursor-pointer" style="pointer-events:stroke;"
+                           @contextmenu.prevent.stop="onConnectionRightclick($event, conn)"
+                           @mouseover="$refs.line.style.stroke = hoverColor()"
+                           @mouseout="$refs.line.style.stroke = color()"
+                        >
+                            <!-- Hitbox invisible más ancha para facilitar el click -->
+                            <path :d="path()" fill="none" stroke="transparent" stroke-width="15" />
+                            <!-- Línea visible -->
+                            <path x-ref="line" :d="path()" fill="none" :stroke="color()" style="transition: stroke 0.2s;" stroke-width="2" :marker-end="isHover() ? `url(#pz-arrow-hover-${conn.id})` : `url(#pz-arrow-${conn.id})`" />
+                        </g>
+                    </svg>
+                </div>
+            </template>
+        </template>
+    </div>
     {{-- ═══════════════════════════════════════════
          CAJAS (HTML sobre el SVG)
     ═══════════════════════════════════════════ --}}
@@ -558,6 +608,7 @@
         connectSource: null,
         tempLine: null,
         undoStack: [],
+        connections: [],
 
         // Menú contextual
         contextMenu: { visible: false, x: 0, y: 0, type: null, target: null },
