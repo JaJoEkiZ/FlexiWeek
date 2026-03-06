@@ -549,6 +549,9 @@
         // Modal de periodos
         periodModal: { visible: false, targetItem: null, periods: [], loading: false },
 
+        // UX Drag
+        currentDropZone: null,
+
         // Colores disponibles
         colors: ['#007fd4','#569cd6','#8B5CF6','#EC4899','#4ec9b0','#F59E0B','#f85149','#06B6D4','#b5cea8','#6a9955'],
 
@@ -688,24 +691,30 @@
 
                 // Opacidad si está sobre el sidebar y desactivar eventos para elementFromPoint
                 const el = document.getElementById('pz-box-' + this.dragging.id);
-                if (el) {
+                if (el && el.style.pointerEvents !== 'none') {
                     el.style.pointerEvents = 'none'; // Clave para que elementFromPoint vea lo que hay debajo
                 }
 
-                // Destacar periodos en sidebar
-                document.querySelectorAll('.period-drop-zone').forEach(el => el.classList.remove('ring-2', 'ring-[#007fd4]', 'bg-[#2a2d2e]'));
-                const elUnderMouse = document.elementFromPoint(e.clientX, e.clientY);
-                let overDropZone = false;
-                if (elUnderMouse) {
-                    const dropZone = elUnderMouse.closest('.period-drop-zone');
+                // Optimización: solo procesar si el mouse está cerca del sidebar (mitad izquierda)
+                let dropZone = null;
+                if (e.clientX < 400) {
+                    const elUnderMouse = document.elementFromPoint(e.clientX, e.clientY);
+                    dropZone = elUnderMouse ? elUnderMouse.closest('.period-drop-zone') : null;
+                }
+
+                // Solo modificar el DOM si cambiamos de zona
+                if (this.currentDropZone !== dropZone) {
+                    if (this.currentDropZone) {
+                        this.currentDropZone.classList.remove('ring-2', 'ring-[#007fd4]', 'bg-[#2a2d2e]');
+                    }
                     if (dropZone) {
                         dropZone.classList.add('ring-2', 'ring-[#007fd4]', 'bg-[#2a2d2e]');
-                        overDropZone = true;
                     }
-                }
-                
-                if (el) {
-                    el.style.opacity = overDropZone ? '0.4' : '1';
+                    this.currentDropZone = dropZone;
+
+                    if (el) {
+                        el.style.opacity = dropZone ? '0.4' : '1';
+                    }
                 }
             }
             if (this.connectMode && this.connectSource) {
@@ -720,12 +729,14 @@
 
         onMouseup(e) {
             if (this.dragging && this.hasDragged) {
-                // Verificar si soltó sobre un periodo
-                const elUnderMouse = document.elementFromPoint(e.clientX, e.clientY);
-                const dropZone = elUnderMouse ? elUnderMouse.closest('.period-drop-zone') : null;
+                // El destino es la currentDropZone
+                const dropZone = this.currentDropZone;
                 
                 // Limpiar highlights siempre
-                document.querySelectorAll('.period-drop-zone').forEach(el => el.classList.remove('ring-2', 'ring-[#007fd4]', 'bg-[#2a2d2e]'));
+                if (this.currentDropZone) {
+                    this.currentDropZone.classList.remove('ring-2', 'ring-[#007fd4]', 'bg-[#2a2d2e]');
+                    this.currentDropZone = null;
+                }
 
                 if (dropZone) {
                     const periodId = dropZone.getAttribute('data-period-id');

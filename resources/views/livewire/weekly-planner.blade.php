@@ -481,13 +481,19 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
     <script>
-        document.addEventListener('livewire:navigated', initSortable);
-        document.addEventListener('DOMContentLoaded', initSortable);
+        document.addEventListener('livewire:initialized', () => {
+            initSortable();
+
+            Livewire.hook('morph.updated', ({ component, el }) => {
+                initSortable();
+            });
+        });
         
         function initSortable() {
             // 1. Sortable para ESCRITORIO (Tabla)
             const tbody = document.getElementById('tasks-tbody');
             if (tbody) {
+                if (Sortable.get(tbody)) Sortable.get(tbody).destroy();
                 new Sortable(tbody, {
                     group: { name: 'tasks', pull: true, put: false }, // Permite sacar tareas hacia el sidebar
                     animation: 300,
@@ -507,6 +513,7 @@
             // 2. Sortable para MÓVIL (Tarjetas)
             const mobileContainer = document.getElementById('mobile-tasks-container');
             if (mobileContainer) {
+                if (Sortable.get(mobileContainer)) Sortable.get(mobileContainer).destroy();
                 new Sortable(mobileContainer, {
                     group: { name: 'tasks', pull: true, put: false },
                     animation: 300,
@@ -528,6 +535,7 @@
             // 3. Drop Zones del Sidebar (Para mover tareas entre semanas)
             const periodDropZones = document.querySelectorAll('.period-drop-zone');
             periodDropZones.forEach(function(zone) {
+                if (Sortable.get(zone)) Sortable.get(zone).destroy();
                 new Sortable(zone, {
                     group: { name: 'tasks', put: true, pull: false }, // Solo recibe
                     sort: false, 
@@ -544,9 +552,6 @@
                         
                         // Llamada Livewire
                         @this.call('moveTaskToPeriod', taskId, newPeriodId);
-                        
-                        // Limpieza DOM
-                        evt.item.remove();
                     },
                     // Gestión de highlights visuales
                     onMove: function(evt) {
