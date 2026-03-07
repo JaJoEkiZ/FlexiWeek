@@ -172,6 +172,26 @@ class Pizarra extends Component
         }
     }
 
+    public function bringToFrontBulk(array $ids)
+    {
+        $maxZ = BoardItem::where('user_id', auth()->id())->max('z_index') ?? 0;
+        $items = BoardItem::where('user_id', auth()->id())->whereIn('id', $ids)->get();
+        foreach ($items as $i => $item) {
+            $item->update(['z_index' => $maxZ + $i + 1]);
+        }
+        $this->loadItems();
+    }
+
+    public function sendToBackBulk(array $ids)
+    {
+        $minZ = BoardItem::where('user_id', auth()->id())->min('z_index') ?? 0;
+        $items = BoardItem::where('user_id', auth()->id())->whereIn('id', $ids)->get();
+        foreach ($items as $i => $item) {
+            $item->update(['z_index' => $minZ - $i - 1]);
+        }
+        $this->loadItems();
+    }
+
     public function deleteConnection($connectionId)
     {
         BoardConection::whereHas('fromItem', function ($q) {

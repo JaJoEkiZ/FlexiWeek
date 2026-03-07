@@ -121,7 +121,7 @@
                                             class="w-full px-2 py-1.5 text-xs bg-[#3c3c3c] border border-[#333] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] focus:outline-none {{ $task->status->value === 'cancelled' ? 'opacity-50 cursor-not-allowed' : '' }}">
                                         <option value="">-- Tarea principal --</option>
                                         @foreach($task->subtasks as $subtask)
-                                            <option value="{{ $subtask->id }}">{{ $subtask->title }}</option>
+                                            <option value="{{ $subtask->id }}" style="{{ $subtask->is_completed ? 'color:#555; text-decoration:line-through;' : '' }}">{{ $subtask->is_completed ? '✓ ' : '' }}{{ $subtask->title }}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -314,7 +314,7 @@
                                                     class="max-w-xs px-2 py-1.5 text-xs bg-[#3c3c3c] border border-[#333] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] focus:outline-none {{ $task->status->value === 'cancelled' ? 'opacity-50 cursor-not-allowed' : '' }}">
                                                 <option value="">-- Tarea principal --</option>
                                                 @foreach($task->subtasks as $subtask)
-                                                    <option value="{{ $subtask->id }}">{{ $subtask->title }}</option>
+                                                    <option value="{{ $subtask->id }}" style="{{ $subtask->is_completed ? 'color:#555; text-decoration:line-through;' : '' }}">{{ $subtask->is_completed ? '✓ ' : '' }}{{ $subtask->title }}</option>
                                                 @endforeach
                                             </select>
                                         @else

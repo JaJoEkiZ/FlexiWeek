@@ -3,7 +3,7 @@
     x-init="init()"
     wire:ignore
     class="pizarra-root"
-    :class="{ 'is-dragging': dragging, 'is-panning': isPanning }"
+    :class="{ 'is-dragging': dragging && !isMultiDragging, 'is-panning': isPanning, 'is-selecting': isSelecting }"
     style="width:100%; height:100%; position:relative; overflow:hidden; background:#1e1e1e; font-family: inherit;"
     @mousemove.window="onMousemove($event)"
     @mouseup.window="onMouseup($event)"
@@ -16,6 +16,8 @@
         .pizarra-root { user-select: none; }
         .pizarra-root.is-dragging, .pizarra-root.is-panning { cursor: grabbing !important; }
         .pizarra-root.is-dragging *, .pizarra-root.is-panning * { cursor: grabbing !important; }
+        .pizarra-root.is-selecting { cursor: crosshair !important; }
+        .pizarra-root.is-selecting * { cursor: crosshair !important; }
         .pizarra-root *, .pizarra-root *::before, .pizarra-root *::after { box-sizing: border-box; }
 
         /* CANVAS */
@@ -221,6 +223,21 @@
             color: #d29922; font-size: 11px; padding: 4px 12px; border-radius: 20px;
             z-index: 150; pointer-events: none; font-family: monospace;
         }
+
+        /* SELECCION MULTIPLE */
+        .pizarra-root .pz-item.multi-selected {
+            border-color: #4ec9b0 !important;
+            box-shadow: 0 0 0 2px rgba(78,201,176,0.3), 0 4px 28px rgba(0,0,0,0.6);
+        }
+        .pizarra-root .pz-selection-box {
+            position: fixed;
+            border: 1.5px solid rgba(0,127,212,0.85);
+            background: rgba(0,127,212,0.08);
+            backdrop-filter: blur(1px);
+            pointer-events: none;
+            z-index: 9999;
+            border-radius: 3px;
+        }
     </style>
 
     {{-- ═══════════════════════════════════════════
@@ -243,6 +260,9 @@
     <div class="pz-connect-badge" x-show="connectMode" x-cloak>
         Seleccioná la caja destino · ESC para cancelar
     </div>
+
+    {{-- Rectángulo de selección por área --}}
+    <div class="pz-selection-box" x-show="isSelecting && selectionBox" :style="selectionBoxStyle()"></div>
 
     {{-- ═══════════════════════════════════════════
          CANVAS SVG + CAJAS
@@ -292,55 +312,7 @@
         </g>
     </svg>
 
-    {{-- ═══════════════════════════════════════════
-         CONEXIONES Y CAJAS (Capa HTML para poder usar z-index individualmente)
-    ═══════════════════════════════════════════ --}}
-    
-    <div id="pz-connections-layer" style="position:absolute;inset:0;pointer-events:none;">
-        <template x-if="connections">
-            <template x-for="conn in connections" :key="'conn-'+conn.id">
-                <div x-data="{ 
-                        path() { return getConnectionPath(conn); },
-                        fromItem() { return items.find(i => i.id == conn.from_item_id); },
-                        zIndex() { 
-                            let z = this.fromItem() ? (this.fromItem().z_index || 0) : 0; 
-                            return z > 0 ? z - 1 : 0; 
-                        },
-                        isHover() { return contextMenu.target?.id === conn.id; },
-                        color() { 
-                            if (this.isHover()) return '#007fd4';
-                            return this.fromItem() ? this.fromItem().color : '#007fd4';
-                        },
-                        hoverColor() { return '#007fd4'; }
-                     }"
-                     x-show="path()"
-                     :style="`position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:${zIndex()};`"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible;">
-                        <defs>
-                            <marker :id="`pz-arrow-${conn.id}`" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-                                <path d="M0,0 L0,6 L8,3 z" fill="rgba(0,127,212,0.7)"/>
-                            </marker>
-                            <marker :id="`pz-arrow-hover-${conn.id}`" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-                                <path d="M0,0 L0,6 L8,3 z" fill="#007fd4"/>
-                            </marker>
-                        </defs>
-                        <g :transform="`translate(${panX},${panY}) scale(${scale})`" 
-                           class="cursor-pointer" style="pointer-events:stroke;"
-                           @contextmenu.prevent.stop="onConnectionRightclick($event, conn)"
-                           @mouseover="$refs.line.style.stroke = hoverColor()"
-                           @mouseout="$refs.line.style.stroke = color()"
-                        >
-                            <!-- Hitbox invisible más ancha para facilitar el click -->
-                            <path :d="path()" fill="none" stroke="transparent" stroke-width="15" />
-                            <!-- Línea visible -->
-                            <path x-ref="line" :d="path()" fill="none" :stroke="color()" style="transition: stroke 0.2s;" stroke-width="2" :marker-end="isHover() ? `url(#pz-arrow-hover-${conn.id})` : `url(#pz-arrow-${conn.id})`" />
-                        </g>
-                    </svg>
-                </div>
-            </template>
-        </template>
-    </div>
+    {{-- Las conexiones son renderizadas programáticamente por renderConnections() en el <g> SVG --}}
     {{-- ═══════════════════════════════════════════
          CAJAS (HTML sobre el SVG)
     ═══════════════════════════════════════════ --}}
@@ -352,7 +324,8 @@
             <div
                 class="pz-item"
                 :class="{
-                    'selected': selectedId === item.id,
+                    'selected': selectedId === item.id && selectedIds.length === 0,
+                    'multi-selected': selectedIds.includes(item.id),
                     'connecting-source': connectSource && connectSource.id === item.id
                 }"
                 :style="{
@@ -418,6 +391,7 @@
                         <input type="text" x-model="editItem.title"
                             @keydown.enter.stop="saveField('title', editItem.title); $el.blur()"
                             @keydown.escape="closePanel()"
+                            @blur="editItem && saveField('title', editItem.title)"
                             placeholder="Nombre de la caja..."
                         />
                     </div>
@@ -426,8 +400,9 @@
                     <div class="pz-field">
                         <label>Notas</label>
                         <textarea rows="4" x-model="editItem.notes"
-                            @keydown.ctrl.enter="saveField('notes', editItem.notes); $el.blur()"
+                            @keydown.ctrl.enter="saveField('notes', editItem.notes)"
                             @keydown.escape="closePanel()"
+                            @blur="editItem && saveField('notes', editItem.notes)"
                             placeholder="Descripción, ideas, links..."
                         ></textarea>
                     </div>
@@ -500,28 +475,49 @@
     >
         <template x-if="contextMenu.type === 'item'">
             <div>
-                <div class="pz-context-item" @click="openPanel(contextMenu.target); contextMenu.visible=false">
-                    ✏️ Editar
-                </div>
-                <div class="pz-context-item" @click="openPeriodSelector(contextMenu.target); contextMenu.visible=false">
-                    📋 Agregar a semana
-                </div>
-                <div class="pz-context-item" @click="startConnect(contextMenu.target); contextMenu.visible=false">
-                    ⟶ Conectar
-                </div>
-                <div class="pz-context-sep"></div>
-                
+                <template x-if="selectedIds.length <= 1">
+                    <div>
+                        <div class="pz-context-item" @click="openPanel(contextMenu.target); contextMenu.visible=false">
+                            ✏️ Editar
+                        </div>
+                        <div class="pz-context-item" @click="openPeriodSelector(contextMenu.target); contextMenu.visible=false">
+                            📋 Agregar a semana
+                        </div>
+                        <div class="pz-context-item" @click="startConnect(contextMenu.target); contextMenu.visible=false">
+                            ⟶ Conectar
+                        </div>
+                        <div class="pz-context-sep"></div>
+                    </div>
+                </template>
+                <template x-if="selectedIds.length > 1">
+                    <div>
+                        <div class="pz-context-item" style="color:#4ec9b0; font-size:10px; padding:4px 10px; cursor:default;">
+                            <span x-text="selectedIds.length + ' cajas seleccionadas'"></span>
+                        </div>
+                        <div class="pz-context-sep"></div>
+                    </div>
+                </template>
+
                 {{-- Submenú de Ordenar --}}
                 <div class="pz-context-item group relative">
                     ↕️ Ordenar <span style="margin-left: auto; font-size: 10px;">▶</span>
                     <div class="absolute left-[95%] top-0 hidden group-hover:block bg-[#252526] border border-[#333] rounded-md py-1 w-40 z-[300] shadow-xl">
-                        <div class="pz-context-item" @click.stop="$wire.bringToFront(contextMenu.target.id).then(() => $wire.loadItems().then(d => items = d)); contextMenu.visible=false">
+                        <div class="pz-context-item" @click.stop="
+                            selectedIds.length > 1
+                                ? $wire.bringToFrontBulk(selectedIds).then(() => reload())
+                                : $wire.bringToFront(contextMenu.target.id).then(() => reload());
+                            contextMenu.visible=false">
                             ⬆️ Traer al frente
                         </div>
-                        <div class="pz-context-item" @click.stop="$wire.sendToBack(contextMenu.target.id).then(() => $wire.loadItems().then(d => items = d)); contextMenu.visible=false">
+                        <div class="pz-context-item" @click.stop="
+                            selectedIds.length > 1
+                                ? $wire.sendToBackBulk(selectedIds).then(() => reload())
+                                : $wire.sendToBack(contextMenu.target.id).then(() => reload());
+                            contextMenu.visible=false">
                             ⬇️ Enviar al fondo
                         </div>
                     </div>
+
                 </div>
 
                 <div class="pz-context-sep"></div>
@@ -619,19 +615,27 @@
         // UX Drag
         currentDropZone: null,
 
+        // Multi-selección por lasso
+        selectedIds: [],
+        isSelecting: false,
+        selectionBox: null,
+        multiDragStarts: {},
+        isMultiDragging: false,
+
         // Colores disponibles
         colors: ['#007fd4','#569cd6','#8B5CF6','#EC4899','#4ec9b0','#F59E0B','#f85149','#06B6D4','#b5cea8','#6a9955'],
 
         // ─── INIT ───────────────────────────────
         init() {
             document.addEventListener('keydown', (e) => {
-                // Escape — cerrar panel / cancelar modo conexión
+                // Escape — cerrar panel / cancelar modo conexión / limpiar selección
                 if (e.key === 'Escape') {
                     this.connectMode = false;
                     this.connectSource = null;
                     this.tempLine = null;
                     this.contextMenu.visible = false;
                     this.periodModal.visible = false;
+                    this.clearSelection();
                     if (this.panelOpen) {
                         this.closePanel();
                     }
@@ -741,6 +745,14 @@
                 this.contextMenu.visible = false;
                 this.isPanning = true;
                 this.panStart = { x: e.clientX - this.panX, y: e.clientY - this.panY };
+                return;
+            }
+            // Lasso: click izquierdo en área vacía
+            if (e.button === 0 && !this.connectMode) {
+                this.clearSelection();
+                this.isSelecting = true;
+                this.selectionBox = { x1: e.clientX, y1: e.clientY, x2: e.clientX, y2: e.clientY };
+                this.contextMenu.visible = false;
             }
         },
 
@@ -749,7 +761,24 @@
                 this.panX = e.clientX - this.panStart.x;
                 this.panY = e.clientY - this.panStart.y;
             }
-            if (this.dragging) {
+            // Actualizar rectángulo de selección
+            if (this.isSelecting && this.selectionBox) {
+                this.selectionBox = { ...this.selectionBox, x2: e.clientX, y2: e.clientY };
+            }
+            // Multi-drag: mover todos los ítems seleccionados
+            if (this.isMultiDragging && this.dragging) {
+                this.hasDragged = true;
+                const dx = (e.clientX - this.dragStart.x) / this.scale;
+                const dy = (e.clientY - this.dragStart.y) / this.scale;
+                this.selectedIds.forEach(id => {
+                    const item = this.items.find(i => i.id === id);
+                    const start = this.multiDragStarts[id];
+                    if (item && start) {
+                        item.pos_x = start.x + dx;
+                        item.pos_y = start.y + dy;
+                    }
+                });
+            } else if (this.dragging) {
                 this.hasDragged = true;
                 const dx = (e.clientX - this.dragStart.x) / this.scale;
                 const dy = (e.clientY - this.dragStart.y) / this.scale;
@@ -759,17 +788,16 @@
                 // Opacidad si está sobre el sidebar y desactivar eventos para elementFromPoint
                 const el = document.getElementById('pz-box-' + this.dragging.id);
                 if (el && el.style.pointerEvents !== 'none') {
-                    el.style.pointerEvents = 'none'; // Clave para que elementFromPoint vea lo que hay debajo
+                    el.style.pointerEvents = 'none';
                 }
 
-                // Optimización: solo procesar si el mouse está cerca del sidebar (mitad izquierda)
+                // Optimización: solo procesar si el mouse está cerca del sidebar
                 let dropZone = null;
                 if (e.clientX < 400) {
                     const elUnderMouse = document.elementFromPoint(e.clientX, e.clientY);
                     dropZone = elUnderMouse ? elUnderMouse.closest('.period-drop-zone') : null;
                 }
 
-                // Solo modificar el DOM si cambiamos de zona
                 if (this.currentDropZone !== dropZone) {
                     if (this.currentDropZone) {
                         this.currentDropZone.classList.remove('ring-2', 'ring-[#007fd4]', 'bg-[#2a2d2e]');
@@ -795,11 +823,25 @@
         },
 
         onMouseup(e) {
+            // Finalizar lasso de selección
+            if (this.isSelecting) {
+                this.isSelecting = false;
+                this.finalizeSelection();
+                this.selectionBox = null;
+                return;
+            }
+            // Finalizar multi-drag
+            if (this.isMultiDragging && this.hasDragged) {
+                this.saveMultiPositions();
+                this.isMultiDragging = false;
+                this.dragging = null;
+                this.hasDragged = false;
+                this.multiDragStarts = {};
+                return;
+            }
             if (this.dragging && this.hasDragged) {
-                // El destino es la currentDropZone
                 const dropZone = this.currentDropZone;
                 
-                // Limpiar highlights siempre
                 if (this.currentDropZone) {
                     this.currentDropZone.classList.remove('ring-2', 'ring-[#007fd4]', 'bg-[#2a2d2e]');
                     this.currentDropZone = null;
@@ -813,11 +855,9 @@
                         });
                     }
                 } else {
-                    // Si no cayó en periodo, guardar posición en canvas
                     this.savePosition(this.dragging);
                 }
 
-                // Restaurar estilos si quedó pegada
                 const el = document.getElementById('pz-box-' + this.dragging.id);
                 if (el) {
                     el.style.opacity = '';
@@ -846,10 +886,27 @@
             if (e.button !== 0) return;
             if (this.connectMode) return;
             e.stopPropagation();
-            this.dragging = item;
-            this.hasDragged = false;
-            this.dragStart = { x: e.clientX, y: e.clientY };
-            this.itemStart = { x: item.pos_x, y: item.pos_y };
+
+            // Si el ítem está dentro de la multi-selección, iniciar multi-drag
+            if (this.selectedIds.includes(item.id) && this.selectedIds.length > 1) {
+                this.isMultiDragging = true;
+                this.dragging = item;
+                this.hasDragged = false;
+                this.dragStart = { x: e.clientX, y: e.clientY };
+                // Guardar posiciones iniciales de todos los seleccionados
+                this.multiDragStarts = {};
+                this.selectedIds.forEach(id => {
+                    const it = this.items.find(i => i.id === id);
+                    if (it) this.multiDragStarts[id] = { x: it.pos_x, y: it.pos_y };
+                });
+            } else {
+                // Selección simple normal
+                this.clearSelection();
+                this.dragging = item;
+                this.hasDragged = false;
+                this.dragStart = { x: e.clientX, y: e.clientY };
+                this.itemStart = { x: item.pos_x, y: item.pos_y };
+            }
         },
 
         onItemClick(e, item) {
@@ -882,6 +939,68 @@
                     this.openPanel(item);
                 }
             }
+        },
+
+        // ─── LASSO SELECTION ─────────────────────
+        selectionBoxStyle() {
+            if (!this.selectionBox) return {};
+            const { x1, y1, x2, y2 } = this.selectionBox;
+            // position:fixed → coordenadas de pantalla directas, sin conversión
+            const left   = Math.min(x1, x2);
+            const top    = Math.min(y1, y2);
+            const width  = Math.abs(x2 - x1);
+            const height = Math.abs(y2 - y1);
+            return { left: left + 'px', top: top + 'px', width: width + 'px', height: height + 'px' };
+        },
+
+        finalizeSelection() {
+            if (!this.selectionBox) return;
+            const { x1, y1, x2, y2 } = this.selectionBox;
+            const selLeft   = Math.min(x1, x2);
+            const selTop    = Math.min(y1, y2);
+            const selRight  = Math.max(x1, x2);
+            const selBottom = Math.max(y1, y2);
+
+            const canvasEl = document.getElementById('pizarra-canvas');
+            const canvasRect = canvasEl ? canvasEl.getBoundingClientRect() : { left: 0, top: 0 };
+
+            // Si el rectángulo es muy pequeño (< 5px), es un click → no seleccionar
+            if ((selRight - selLeft) < 5 && (selBottom - selTop) < 5) return;
+
+            const selected = [];
+            this.items.forEach(item => {
+                // Convertir posición del item de canvas a pantalla
+                const screenX1 = canvasRect.left + this.panX + item.pos_x * this.scale;
+                const screenY1 = canvasRect.top  + this.panY + item.pos_y * this.scale;
+                const screenX2 = screenX1 + item.width  * this.scale;
+                const screenY2 = screenY1 + (item.height || 70) * this.scale;
+
+                const intersects = screenX1 < selRight  && screenX2 > selLeft &&
+                                   screenY1 < selBottom && screenY2 > selTop;
+                if (intersects) selected.push(item.id);
+            });
+
+            this.selectedIds = selected;
+            if (selected.length === 1) {
+                this.selectedId = selected[0];
+            }
+        },
+
+        saveMultiPositions() {
+            const promises = this.selectedIds.map(id => {
+                const item = this.items.find(i => i.id === id);
+                if (!item) return Promise.resolve();
+                return this.$wire.updateItem(id, { pos_x: item.pos_x, pos_y: item.pos_y });
+            });
+            Promise.all(promises).then(() => this.reload());
+        },
+
+        clearSelection() {
+            this.selectedIds = [];
+            this.isSelecting = false;
+            this.selectionBox = null;
+            this.multiDragStarts = {};
+            this.isMultiDragging = false;
         },
 
         onItemRightclick(e, item) {
