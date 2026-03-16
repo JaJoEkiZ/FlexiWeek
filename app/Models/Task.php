@@ -60,15 +60,9 @@ class Task extends Model
     }
 
     // Tiempo invertido efectivo: suma de TaskTimeLog + tiempo de subtareas
-    // Las subtareas siempre contribuyen al "trabajo realizado"
+    // Las subtareas siempre contribuyen al "trabajo realizado", y el tiempo principal también.
     public function getEffectiveSpentMinutesAttribute()
     {
-        if ($this->completion_method === 'subtasks') {
-            // Para "Por Subtareas": solo tiempo de subtareas
-            return $this->subtasks_total_spent;
-        }
-
-        // Para "Por Tiempo": TaskTimeLog + tiempo de subtareas
         return $this->total_spent + $this->subtasks_total_spent;
     }
 
@@ -87,13 +81,13 @@ class Task extends Model
             $completionRatio = $completedSubtasks / $totalSubtasks;
 
             // Factor 2: Porcentaje de tiempo invertido (50% peso)
-            $subtasksEstimated = $this->subtasks_total_estimated;
-            $subtasksSpent = $this->subtasks_total_spent;
+            $subtasksEstimated = $this->effective_estimated_minutes;
+            $subtasksSpent = $this->effective_spent_minutes;
 
-            // Si hay tiempo estimado en subtareas, usar cálculo híbrido
+            // Si hay tiempo estimado, usar cálculo híbrido
             if ($subtasksEstimated > 0) {
-                $effectiveEstimated = max($this->estimated_minutes, $subtasksEstimated);
-                $timeRatio = min($subtasksSpent / $effectiveEstimated, 1); // Cap at 100%
+                // effective_estimated_minutes ya es max(estimated_minutes, subtasks_total_estimated) porque los suma (revisar: no usa max, lo suma)
+                $timeRatio = min($subtasksSpent / $subtasksEstimated, 1); // Cap at 100%
 
                 // Fórmula híbrida: 50% completitud + 50% tiempo
                 return round(($completionRatio * 0.5 + $timeRatio * 0.5) * 100);

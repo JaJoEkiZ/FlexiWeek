@@ -93,20 +93,6 @@
                                 <div>
                                     <label class="block text-xs font-mono text-[#7b7b7b] mb-2">Tiempo General de Tarea</label>
                                     
-                                    {{-- Summary Bar --}}
-                                    <div class="flex gap-4 mb-3 text-xs p-2 bg-[#1e1e1e] rounded border border-[#333]">
-                                        @if($task->estimated_minutes > 0)
-                                            <div class="flex items-center gap-1">
-                                                <span class="text-[#5a5a5a]">⏱ Estimado:</span>
-                                                <span class="text-[#ce9178]">{{ intdiv($task->estimated_minutes, 60) }}h {{ $task->estimated_minutes % 60 }}m</span>
-                                            </div>
-                                        @endif
-                                        <div class="flex items-center gap-1">
-                                            <span class="text-[#5a5a5a]">✓ Invertido:</span>
-                                            <span class="text-[#4ec9b0]">{{ intdiv($task->total_spent, 60) }}h {{ $task->total_spent % 60 }}m</span>
-                                        </div>
-                                    </div>
-
                                     {{-- Individual Log Entries --}}
                                     @if($task->timeLogs->count() > 0)
                                         <div class="space-y-1 max-h-40 overflow-y-auto">
