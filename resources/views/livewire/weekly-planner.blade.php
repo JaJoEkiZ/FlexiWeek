@@ -92,7 +92,7 @@
                                         </span>
                                         {{ $task->status->label() }}
                                     </button>
-                                    <span class="font-medium text-[#d4d4d4] text-sm truncate block {{ $task->status->value === 'cancelled' ? 'line-through' : '' }}">{{ $task->title }}@if($task->is_persistent) <span class="text-[#569cd6]" title="Tarea Persistente">🔁</span>@endif</span>
+                                    <span class="font-medium text-[#d4d4d4] text-sm truncate block {{ $task->status->value === 'cancelled' ? 'line-through' : '' }}">{{ $task->title }}@if($task->is_persistent) <span class="text-[#569cd6]" title="Tarea Persistente">🔁</span>@endif<span class="text-xs ml-1" title="{{ $task->completion_method === 'subtasks' ? 'Completado por subtareas' : 'Completado por tiempo' }}">{{ $task->completion_method === 'subtasks' ? '📋' : '⏱️' }}</span></span>
                                 </div>
                                 
                                 <div class="flex items-center gap-1 flex-shrink-0">
@@ -298,7 +298,7 @@
                                     </td>
                                     <td class="p-4">
                                         <div class="flex items-center gap-2">
-                                            <span class="font-medium text-[#d4d4d4] group-hover:text-white transition-colors {{ $task->status->value === 'cancelled' ? 'line-through' : '' }}">{{ $task->title }}@if($task->is_persistent) <span class="text-[#569cd6]" title="Tarea Persistente">🔁</span>@endif</span>
+                                            <span class="font-medium text-[#d4d4d4] group-hover:text-white transition-colors {{ $task->status->value === 'cancelled' ? 'line-through' : '' }}">{{ $task->title }}@if($task->is_persistent) <span class="text-[#569cd6]" title="Tarea Persistente">🔁</span>@endif<span class="text-xs ml-1" title="{{ $task->completion_method === 'subtasks' ? 'Completado por subtareas' : 'Completado por tiempo' }}">{{ $task->completion_method === 'subtasks' ? '📋' : '⏱️' }}</span></span>
                                             <button 
                                                 wire:click="$dispatch('openTaskDetails', { taskId: {{ $task->id }} })"
                                                 @click.stop
