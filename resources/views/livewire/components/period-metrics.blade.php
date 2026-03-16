@@ -83,19 +83,40 @@
             {{-- Tiempo estimado vs invertido --}}
             <div class="bg-[#252526] border border-[#333] rounded-lg p-5">
                 <h3 class="text-xs text-[#7b7b7b] uppercase tracking-wider mb-3">Tiempo Total</h3>
-                <div class="space-y-2">
-                    <div class="flex justify-between items-center">
-                        <span class="text-xs text-[#8b949e]">Estimado</span>
-                        <span class="text-sm font-mono text-[#9cdcfe]">{{ intdiv($metrics['totalEstimated'], 60) }}h {{ $metrics['totalEstimated'] % 60 }}m</span>
+                <div class="space-y-3">
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-[#8b949e]">Estimado</span>
+                            <span class="text-sm font-mono text-[#9cdcfe]">{{ intdiv($metrics['totalEstimated'], 60) }}h {{ $metrics['totalEstimated'] % 60 }}m</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-[#8b949e]">Invertido</span>
+                            <span class="text-sm font-mono {{ $metrics['totalSpent'] > $metrics['totalEstimated'] ? 'text-[#f85149]' : 'text-[#4ec9b0]' }}">{{ intdiv($metrics['totalSpent'], 60) }}h {{ $metrics['totalSpent'] % 60 }}m</span>
+                        </div>
+                        @if($metrics['totalEstimated'] > 0)
+                            <div class="w-full bg-[#3c3c3c] rounded-full h-1.5 mt-2 mb-1 overflow-hidden">
+                                <div class="h-1.5 rounded-full transition-all duration-700 {{ ($metrics['totalSpent'] / $metrics['totalEstimated']) > 1 ? 'bg-[#f85149]' : 'bg-[#007fd4]' }}"
+                                     style="width: {{ min(($metrics['totalSpent'] / $metrics['totalEstimated']) * 100, 100) }}%"></div>
+                            </div>
+                        @endif
                     </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-xs text-[#8b949e]">Invertido</span>
-                        <span class="text-sm font-mono {{ $metrics['totalSpent'] > $metrics['totalEstimated'] ? 'text-[#f85149]' : 'text-[#4ec9b0]' }}">{{ intdiv($metrics['totalSpent'], 60) }}h {{ $metrics['totalSpent'] % 60 }}m</span>
-                    </div>
-                    @if($metrics['totalEstimated'] > 0)
-                        <div class="w-full bg-[#3c3c3c] rounded-full h-2 mt-2 overflow-hidden">
-                            <div class="h-2 rounded-full transition-all duration-700 {{ ($metrics['totalSpent'] / $metrics['totalEstimated']) > 1 ? 'bg-[#f85149]' : 'bg-[#007fd4]' }}"
-                                 style="width: {{ min(($metrics['totalSpent'] / $metrics['totalEstimated']) * 100, 100) }}%"></div>
+                    
+                    @if($metrics['totalOvertime'] > 0 || ($metrics['totalGained'] > 0 && $metrics['isPeriodOver']))
+                        <div class="pt-2 border-t border-[#333] space-y-2">
+                            @if($metrics['totalOvertime'] > 0)
+                                <div class="flex justify-between items-center group cursor-pointer hover:bg-[#333] -mx-2 px-2 py-1 rounded transition-colors"
+                                     wire:click="$dispatch('openMetricsTaskDetails', { type: 'overtime', periodId: {{ $mode === 'period' ? $selectedPeriodId ?? 'null' : 'null' }}, rangeStart: '{{ $mode === 'range' ? $rangeStart : '' }}', rangeEnd: '{{ $mode === 'range' ? $rangeEnd : '' }}' })">
+                                    <span class="text-[11px] text-[#7b7b7b] uppercase group-hover:text-white transition-colors">🔴 Tiempo Excedido</span>
+                                    <span class="text-sm font-mono font-medium text-[#f85149]">{{ intdiv($metrics['totalOvertime'], 60) }}h {{ $metrics['totalOvertime'] % 60 }}m</span>
+                                </div>
+                            @endif
+                            @if($metrics['totalGained'] > 0 && $metrics['isPeriodOver'])
+                                <div class="flex justify-between items-center group cursor-pointer hover:bg-[#333] -mx-2 px-2 py-1 rounded transition-colors"
+                                     wire:click="$dispatch('openMetricsTaskDetails', { type: 'gained', periodId: {{ $mode === 'period' ? $selectedPeriodId ?? 'null' : 'null' }}, rangeStart: '{{ $mode === 'range' ? $rangeStart : '' }}', rangeEnd: '{{ $mode === 'range' ? $rangeEnd : '' }}' })">
+                                    <span class="text-[11px] text-[#7b7b7b] uppercase group-hover:text-white transition-colors">🟢 Tiempo Ganado</span>
+                                    <span class="text-sm font-mono font-medium text-[#4ec9b0]">{{ intdiv($metrics['totalGained'], 60) }}h {{ $metrics['totalGained'] % 60 }}m</span>
+                                </div>
+                            @endif
                         </div>
                     @endif
                 </div>

@@ -571,7 +571,7 @@
     </div>
 
     {{-- HINT --}}
-    <div class="pz-hint">doble click para crear · click derecho para opciones · scroll para zoom</div>
+    <div class="pz-hint">doble click para crear · click derecho para opciones · click scroll para moverse · scroll para zoom</div>
 
     {{-- ═══════════════════════════════════════════
          ALPINE COMPONENT

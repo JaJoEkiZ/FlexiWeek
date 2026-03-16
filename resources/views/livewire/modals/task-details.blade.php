@@ -1,6 +1,6 @@
 <div>
     @if($isOpen && $task)
-        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 z-[60] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
             <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
                 <!-- Overlay -->
                 <div class="fixed inset-0 bg-black bg-opacity-70 transition-opacity backdrop-filter backdrop-blur-sm" aria-hidden="true" wire:click="close"></div>
@@ -57,7 +57,13 @@
                                 $effectiveSpent = $task->effective_spent_minutes;
                             @endphp
                             @if($effectiveEstimated > 0 || $effectiveSpent > 0)
-                                <div class="flex gap-4 text-xs p-2.5 bg-[#1a2332] rounded border border-[#264f78] items-center">
+                                @php
+                                    $timeDiff = $effectiveEstimated - $effectiveSpent;
+                                    $isGained  = $timeDiff > 0;
+                                    $isOver    = $timeDiff < 0;
+                                    $absDiff   = abs($timeDiff);
+                                @endphp
+                                <div class="flex gap-4 text-xs p-2.5 bg-[#1a2332] rounded border border-[#264f78] items-center flex-wrap">
                                     <span class="text-[#569cd6] font-medium">📊 Tiempo Total</span>
                                     <div class="flex items-center gap-1">
                                         <span class="text-[#5a5a5a]">⏱ Estimado:</span>
@@ -67,6 +73,19 @@
                                         <span class="text-[#5a5a5a]">✓ Invertido:</span>
                                         <span class="text-[#4ec9b0] font-medium">{{ intdiv($effectiveSpent, 60) }}h {{ $effectiveSpent % 60 }}m</span>
                                     </div>
+                                    @if($effectiveEstimated > 0 && $effectiveSpent > 0)
+                                        @if($isGained)
+                                            <div class="flex items-center gap-1">
+                                                <span class="text-[#5a5a5a]">🟢 Ganado:</span>
+                                                <span class="text-[#4ec9b0] font-semibold">{{ intdiv($absDiff, 60) }}h {{ $absDiff % 60 }}m</span>
+                                            </div>
+                                        @elseif($isOver)
+                                            <div class="flex items-center gap-1">
+                                                <span class="text-[#5a5a5a]">🔴 Excedido:</span>
+                                                <span class="text-[#f85149] font-semibold">{{ intdiv($absDiff, 60) }}h {{ $absDiff % 60 }}m</span>
+                                            </div>
+                                        @endif
+                                    @endif
                                 </div>
                             @endif
                             <!-- General Task Time -->

@@ -412,6 +412,7 @@
     <livewire:modals.period-form />
     <livewire:modals.task-details />
     <livewire:modals.duplicate-task />
+    <livewire:modals.metrics-task-details />
 
     <!-- Context Menu -->
     <div x-show="ctxMenu.show" 

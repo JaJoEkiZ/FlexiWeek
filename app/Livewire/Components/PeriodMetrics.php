@@ -107,10 +107,27 @@ class PeriodMetrics extends Component
         $totalSpent = $tasks->sum('effective_spent_minutes');
 
         $overTimeTasks = $tasks->filter(fn ($t) => $t->effective_spent_minutes > $t->effective_estimated_minutes && $t->effective_estimated_minutes > 0);
+        $totalOvertime = $overTimeTasks->sum(fn ($t) => $t->effective_spent_minutes - $t->effective_estimated_minutes);
+
+        $gainedTimeTasks = $tasks->filter(fn ($t) => $t->status === TaskStatus::Completed && $t->effective_estimated_minutes > $t->effective_spent_minutes);
+        $totalGained = $gainedTimeTasks->sum(fn ($t) => $t->effective_estimated_minutes - $t->effective_spent_minutes);
 
         $avgTimePerTask = $total > 0 ? round($totalSpent / $total) : 0;
 
         $completionRate = $total > 0 ? round(($completed / $total) * 100) : 0;
+
+        // Determinar si el período ha terminado para mostrar tiempo ganado
+        $isPeriodOver = false;
+        if ($this->mode === 'period') {
+            $period = Period::find($this->selectedPeriodId);
+            if ($period && now()->startOfDay()->gt(\Carbon\Carbon::parse($period->end_date))) {
+                $isPeriodOver = true;
+            }
+        } elseif ($this->mode === 'range') {
+            if (now()->startOfDay()->gt(\Carbon\Carbon::parse($this->rangeEnd))) {
+                $isPeriodOver = true;
+            }
+        }
 
         return [
             'label' => $label,
@@ -125,6 +142,9 @@ class PeriodMetrics extends Component
             'cancelled' => $cancelled,
             'totalEstimated' => $totalEstimated,
             'totalSpent' => $totalSpent,
+            'totalOvertime' => $totalOvertime,
+            'totalGained' => $totalGained,
+            'isPeriodOver' => $isPeriodOver,
             'overTimeCount' => $overTimeTasks->count(),
             'avgTimePerTask' => $avgTimePerTask,
             'completionRate' => $completionRate,
@@ -157,6 +177,9 @@ class PeriodMetrics extends Component
             'cancelled' => 0,
             'totalEstimated' => 0,
             'totalSpent' => 0,
+            'totalOvertime' => 0,
+            'totalGained' => 0,
+            'isPeriodOver' => false,
             'overTimeCount' => 0,
             'avgTimePerTask' => 0,
             'completionRate' => 0,
