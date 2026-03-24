@@ -96,11 +96,14 @@
                                     {{-- Individual Log Entries --}}
                                     @if($task->timeLogs->count() > 0)
                                         <div class="space-y-1 max-h-40 overflow-y-auto">
-                                            @foreach($task->timeLogs->sortByDesc('log_date') as $log)
+                                            @foreach($task->timeLogs->sortByDesc('created_at') as $log)
                                                 <div class="flex items-center justify-between bg-[#1e1e1e] rounded px-3 py-1.5 border border-[#333] text-xs">
                                                     <div class="flex items-center gap-2">
                                                         <span class="text-[#007fd4]">🕐</span>
-                                                        <span class="text-[#9d9d9d] font-mono">{{ \Carbon\Carbon::parse($log->log_date)->format('d/m/Y') }}</span>
+                                                        <div class="flex flex-col">
+                                                            <span class="text-[#9d9d9d] font-mono">{{ \Carbon\Carbon::parse($log->log_date)->format('d/m/Y') }}</span>
+                                                            <span class="text-[#5a5a5a] font-mono text-[10px]">cargado {{ \Carbon\Carbon::parse($log->created_at)->setTimezone(auth()->user()->timezone ?? config('app.timezone'))->format('H:i') }}</span>
+                                                        </div>
                                                     </div>
                                                     <span class="text-[#4ec9b0] font-medium">
                                                         {{ intdiv($log->minutes_spent, 60) }}h {{ $log->minutes_spent % 60 }}m
@@ -147,12 +150,17 @@
                                                     </div>
                                                     {{-- Subtask Time Badge --}}
                                                     @if($subtask->estimated_minutes > 0 || $subtask->spent_minutes > 0)
-                                                        <div class="flex gap-2 text-xs">
-                                                            @if($subtask->estimated_minutes > 0)
-                                                                <span class="text-[#ce9178]">{{ intdiv($subtask->estimated_minutes, 60) }}h {{ $subtask->estimated_minutes % 60 }}m</span>
-                                                            @endif
+                                                        <div class="flex flex-col items-end gap-0.5 text-xs">
+                                                            <div class="flex gap-2">
+                                                                @if($subtask->estimated_minutes > 0)
+                                                                    <span class="text-[#ce9178]">{{ intdiv($subtask->estimated_minutes, 60) }}h {{ $subtask->estimated_minutes % 60 }}m</span>
+                                                                @endif
+                                                                @if($subtask->spent_minutes > 0)
+                                                                    <span class="text-[#4ec9b0]">({{ intdiv($subtask->spent_minutes, 60) }}h {{ $subtask->spent_minutes % 60 }}m)</span>
+                                                                @endif
+                                                            </div>
                                                             @if($subtask->spent_minutes > 0)
-                                                                <span class="text-[#4ec9b0]">({{ intdiv($subtask->spent_minutes, 60) }}h {{ $subtask->spent_minutes % 60 }}m)</span>
+                                                                <span class="text-[#5a5a5a] font-mono text-[10px]">cargado {{ \Carbon\Carbon::parse($subtask->updated_at)->setTimezone(auth()->user()->timezone ?? config('app.timezone'))->format('H:i d/m/Y') }}</span>
                                                             @endif
                                                         </div>
                                                     @endif
