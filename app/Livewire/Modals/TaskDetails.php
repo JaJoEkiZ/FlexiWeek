@@ -25,7 +25,7 @@ class TaskDetails extends Component
     public function openTaskDetails($taskId)
     {
         $this->taskId = $taskId;
-        $this->task = Task::with(['subtasks', 'timeLogs'])->findOrFail($taskId);
+        $this->task = Task::with(['subtasks', 'timeLogs', 'period'])->findOrFail($taskId);
         $this->description = $this->task->description ?? '';
 
         // Load subtask descriptions

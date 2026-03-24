@@ -101,13 +101,19 @@
                         @endif
                     </div>
                     
-                    @if($metrics['totalOvertime'] > 0 || ($metrics['totalGained'] > 0 && $metrics['isPeriodOver']))
+                    @if($metrics['totalOvertime'] > 0 || $metrics['totalRemaining'] > 0 || ($metrics['totalGained'] > 0 && $metrics['isPeriodOver']))
                         <div class="pt-2 border-t border-[#333] space-y-2">
                             @if($metrics['totalOvertime'] > 0)
                                 <div class="flex justify-between items-center group cursor-pointer hover:bg-[#333] -mx-2 px-2 py-1 rounded transition-colors"
                                      wire:click="$dispatch('openMetricsTaskDetails', { type: 'overtime', periodId: {{ $mode === 'period' ? $selectedPeriodId ?? 'null' : 'null' }}, rangeStart: '{{ $mode === 'range' ? $rangeStart : '' }}', rangeEnd: '{{ $mode === 'range' ? $rangeEnd : '' }}' })">
                                     <span class="text-[11px] text-[#7b7b7b] uppercase group-hover:text-white transition-colors">🔴 Tiempo Excedido</span>
                                     <span class="text-sm font-mono font-medium text-[#f85149]">{{ intdiv($metrics['totalOvertime'], 60) }}h {{ $metrics['totalOvertime'] % 60 }}m</span>
+                                </div>
+                            @endif
+                            @if($metrics['totalRemaining'] > 0 && !$metrics['isPeriodOver'])
+                                <div class="flex justify-between items-center -mx-2 px-2 py-1 rounded">
+                                    <span class="text-[11px] text-[#7b7b7b] uppercase">⏳ Tiempo Restante</span>
+                                    <span class="text-sm font-mono font-medium text-[#569cd6]">{{ intdiv($metrics['totalRemaining'], 60) }}h {{ $metrics['totalRemaining'] % 60 }}m</span>
                                 </div>
                             @endif
                             @if($metrics['totalGained'] > 0 && $metrics['isPeriodOver'])

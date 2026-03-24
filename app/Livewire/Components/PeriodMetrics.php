@@ -103,14 +103,21 @@ class PeriodMetrics extends Component
         $paused = $tasks->where('status', TaskStatus::Paused)->count();
         $cancelled = $tasks->where('status', TaskStatus::Cancelled)->count();
 
-        $totalEstimated = $tasks->sum('effective_estimated_minutes');
-        $totalSpent = $tasks->sum('effective_spent_minutes');
+        // Tareas canceladas: su estimado sale del total, pero el trabajo realizado sí cuenta
+        $cancelledTasks  = $tasks->where('status', TaskStatus::Cancelled);
+        $activeTasks     = $tasks->where('status', '!=', TaskStatus::Cancelled);
+
+        $totalEstimated  = $activeTasks->sum('effective_estimated_minutes');
+        $totalSpent      = $tasks->sum('effective_spent_minutes'); // incluye trabajo de canceladas
 
         $overTimeTasks = $tasks->filter(fn ($t) => $t->effective_spent_minutes > $t->effective_estimated_minutes && $t->effective_estimated_minutes > 0);
         $totalOvertime = $overTimeTasks->sum(fn ($t) => $t->effective_spent_minutes - $t->effective_estimated_minutes);
 
-        $gainedTimeTasks = $tasks->filter(fn ($t) => $t->status === TaskStatus::Completed && $t->effective_estimated_minutes > $t->effective_spent_minutes);
-        $totalGained = $gainedTimeTasks->sum(fn ($t) => $t->effective_estimated_minutes - $t->effective_spent_minutes);
+        $gainedTimeTasks   = $tasks->filter(fn ($t) => $t->status === TaskStatus::Completed && $t->effective_estimated_minutes > $t->effective_spent_minutes);
+        $totalGained       = $gainedTimeTasks->sum(fn ($t) => $t->effective_estimated_minutes - $t->effective_spent_minutes);
+
+        $remainingTimeTasks = $tasks->filter(fn ($t) => !in_array($t->status, [TaskStatus::Completed, TaskStatus::Cancelled]) && $t->effective_estimated_minutes > $t->effective_spent_minutes);
+        $totalRemaining    = $remainingTimeTasks->sum(fn ($t) => $t->effective_estimated_minutes - $t->effective_spent_minutes);
 
         $avgTimePerTask = $total > 0 ? round($totalSpent / $total) : 0;
 
@@ -143,8 +150,9 @@ class PeriodMetrics extends Component
             'totalEstimated' => $totalEstimated,
             'totalSpent' => $totalSpent,
             'totalOvertime' => $totalOvertime,
-            'totalGained' => $totalGained,
-            'isPeriodOver' => $isPeriodOver,
+            'totalGained'    => $totalGained,
+            'totalRemaining' => $totalRemaining,
+            'isPeriodOver'   => $isPeriodOver,
             'overTimeCount' => $overTimeTasks->count(),
             'avgTimePerTask' => $avgTimePerTask,
             'completionRate' => $completionRate,
@@ -178,8 +186,9 @@ class PeriodMetrics extends Component
             'totalEstimated' => 0,
             'totalSpent' => 0,
             'totalOvertime' => 0,
-            'totalGained' => 0,
-            'isPeriodOver' => false,
+            'totalGained'    => 0,
+            'totalRemaining' => 0,
+            'isPeriodOver'   => false,
             'overTimeCount' => 0,
             'avgTimePerTask' => 0,
             'completionRate' => 0,
