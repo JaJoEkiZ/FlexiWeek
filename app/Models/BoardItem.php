@@ -59,6 +59,7 @@ class BoardItem extends Model
     protected static function booted()
     {
         static::deleting(function ($item) {
+            $item->children()->update(['parent_id' => null]); // Equivalent to nullOnDelete for SQL Server
             $item->subtasks()->delete();
             $item->connectionsFrom()->delete();
             $item->connectionsTo()->delete();

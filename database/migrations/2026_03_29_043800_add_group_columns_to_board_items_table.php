@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Schema;
         Schema::table('board_items', function (Blueprint $table) {
             $table->boolean('is_group')->default(false)->after('color');
             // 'parent_id' es nulo por defecto. NullOnDelete hace que si borramos un grupo bruscamente, sus hijos queden "sueltos".
-            $table->foreignId('parent_id')->nullable()->after('is_group')->constrained('board_items')->nullOnDelete();
+            $table->foreignId('parent_id')->nullable()->after('is_group')->constrained('board_items');
         });
     }
     public function down(): void
