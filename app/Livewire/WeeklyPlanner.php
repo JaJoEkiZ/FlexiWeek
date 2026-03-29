@@ -7,6 +7,7 @@ use App\Models\Period;
 use App\Models\Task;
 use App\Models\TaskTimeLog;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Renderless;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -18,9 +19,6 @@ class WeeklyPlanner extends Component
     protected $paginationTheme = 'tailwind';
 
     public $selectedPeriodId;
-    public $minutesInput = [];
-    public $hoursInput = [];
-    public $selectedSubtask = [];
 
     public function mount($period = null)
     {
@@ -54,6 +52,7 @@ class WeeklyPlanner extends Component
         $this->redirect(route('planner', $periodId), navigate: true);
     }
 
+    #[Renderless]
     public function cycleStatus($taskId)
     {
         $task = Task::findOrFail($taskId);
@@ -82,29 +81,29 @@ class WeeklyPlanner extends Component
     {
         $task = Task::findOrFail($taskId);
         if ($task->status === TaskStatus::Cancelled) {
-            session()->flash('message', 'No se puede finalizar una tarea cancelada.');
+            $this->dispatch('toast', message: 'No se puede finalizar una tarea cancelada.', type: 'error');
             return;
         }
         if ($task->status === TaskStatus::Completed) {
-            session()->flash('message', 'La tarea ya está finalizada.');
+            $this->dispatch('toast', message: 'La tarea ya está finalizada.', type: 'info');
             return;
         }
         $task->update(['status' => TaskStatus::Completed]);
-        session()->flash('message', '¡Tarea finalizada manualmente!');
+        $this->dispatch('toast', message: '¡Tarea finalizada manualmente!', type: 'success');
     }
 
     public function cancelTask($taskId)
     {
         $task = Task::findOrFail($taskId);
         $task->update(['status' => TaskStatus::Cancelled]);
-        session()->flash('message', 'Tarea cancelada.');
+        $this->dispatch('toast', message: 'Tarea cancelada.', type: 'info');
     }
 
     public function reactivateTask($taskId)
     {
         $task = Task::findOrFail($taskId);
         $task->update(['status' => TaskStatus::Pending]);
-        session()->flash('message', 'Tarea reactivada.');
+        $this->dispatch('toast', message: 'Tarea reactivada.', type: 'info');
     }
 
     public function sendToPizarra($taskId)
@@ -140,25 +139,48 @@ class WeeklyPlanner extends Component
 
         $task->delete(); // Eliminar la tarea original
 
-        session()->flash('message', 'Tarea enviada a la pizarra.');
+        $this->dispatch('toast', message: 'Tarea enviada a la pizarra.', type: 'success');
         $this->dispatch('$refresh');
     }
 
-    public function addTime($taskId)
+    #[Renderless]
+    public function toggleSubtask($taskId, $subtaskId)
+    {
+        $subtask = \App\Models\Subtask::find($subtaskId);
+        if ($subtask && $subtask->task_id == $taskId) {
+            $subtask->update(['is_completed' => !$subtask->is_completed]);
+
+            $task = Task::findOrFail($taskId);
+            $total = $task->subtasks()->count();
+            $completed = $task->subtasks()->where('is_completed', true)->count();
+
+            if ($total === $completed) {
+                $task->update(['status' => TaskStatus::Completed]);
+                $this->dispatch('toast', message: '¡Todas las subtareas completadas!', type: 'success');
+            } else {
+                if ($task->status === TaskStatus::Completed) {
+                    $task->update(['status' => TaskStatus::InProgress]);
+                }
+            }
+        }
+    }
+
+    #[Renderless]
+    public function addTime($taskId, $hours, $mins, $subtaskId = null)
     {
         $task = Task::findOrFail($taskId);
 
         if ($task->status === TaskStatus::Cancelled) {
-            session()->flash('message', 'No se puede agregar tiempo a una tarea cancelada.');
+            $this->dispatch('toast', message: 'No se puede agregar tiempo a una tarea cancelada.', type: 'error');
             return;
         }
 
-        if (! empty($this->selectedSubtask[$taskId])) {
-            return $this->addTimeToSubtask($taskId);
+        if (! empty($subtaskId)) {
+            return $this->addTimeToSubtask($taskId, $hours, $mins, $subtaskId);
         }
 
-        $hours = (int) ($this->hoursInput[$taskId] ?? 0);
-        $mins  = (int) ($this->minutesInput[$taskId] ?? 0);
+        $hours = (int) $hours;
+        $mins  = (int) $mins;
         $minutes = ($hours * 60) + $mins;
 
         if ($minutes > 0) {
@@ -168,34 +190,31 @@ class WeeklyPlanner extends Component
                 'log_date'      => now(),
             ]);
 
-            $this->minutesInput[$taskId] = '';
-            $this->hoursInput[$taskId]   = '';
-
             if ($task->progress >= 100 && $task->status !== TaskStatus::Completed) {
                 $task->update(['status' => TaskStatus::Completed]);
-                session()->flash('message', "¡Tarea completada! Se cargaron {$minutes} minutos.");
+                $this->dispatch('toast', message: "¡Tarea completada! Se cargaron {$minutes} minutos.", type: 'success');
             } else {
                 if ($task->status === TaskStatus::Pending) {
                     $task->update(['status' => TaskStatus::InProgress]);
                 }
-                session()->flash('message', "¡Se cargaron {$minutes} minutos!");
+                $this->dispatch('toast', message: "¡Se cargaron {$minutes} minutos!", type: 'success');
             }
         }
     }
 
-    public function addTimeToSubtask($taskId)
+    #[Renderless]
+    public function addTimeToSubtask($taskId, $hours, $mins, $subtaskId)
     {
         $task = Task::findOrFail($taskId);
 
         if ($task->status === TaskStatus::Cancelled) {
-            session()->flash('message', 'No se puede agregar tiempo a una tarea cancelada.');
+            $this->dispatch('toast', message: 'No se puede agregar tiempo a una tarea cancelada.', type: 'error');
             return;
         }
 
-        $subtaskId = $this->selectedSubtask[$taskId] ?? null;
-        $hours     = (int) ($this->hoursInput[$taskId] ?? 0);
-        $mins      = (int) ($this->minutesInput[$taskId] ?? 0);
-        $minutes   = ($hours * 60) + $mins;
+        $hours = (int) $hours;
+        $mins  = (int) $mins;
+        $minutes = ($hours * 60) + $mins;
 
         if ($subtaskId && $minutes > 0) {
             $subtask = \App\Models\Subtask::find($subtaskId);
@@ -206,17 +225,13 @@ class WeeklyPlanner extends Component
 
                 if ($task->progress >= 100 && $task->status !== TaskStatus::Completed) {
                     $task->update(['status' => TaskStatus::Completed]);
-                    session()->flash('message', "¡Tarea completada! Se cargaron {$minutes} minutos a '{$subtask->title}'.");
+                    $this->dispatch('toast', message: "¡Tarea completada! Se cargaron {$minutes} minutos a '{$subtask->title}'.", type: 'success');
                 } else {
                     if ($task->status === TaskStatus::Pending) {
                         $task->update(['status' => TaskStatus::InProgress]);
                     }
-                    session()->flash('message', "¡Se cargaron {$minutes} minutos a '{$subtask->title}'!");
+                    $this->dispatch('toast', message: "¡Se cargaron {$minutes} minutos a '{$subtask->title}'!", type: 'success');
                 }
-
-                $this->minutesInput[$taskId]   = '';
-                $this->hoursInput[$taskId]     = '';
-                $this->selectedSubtask[$taskId] = null;
             }
         }
     }

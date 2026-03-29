@@ -77,6 +77,48 @@
 
     </div>
 
+    {{-- Notificaciones Toast Globales --}}
+    <div x-data="{ toasts: [] }"
+         @toast.window="
+            let t = { id: Date.now(), message: $event.detail.message, type: $event.detail.type || 'info' };
+            toasts.push(t);
+            setTimeout(() => { toasts = toasts.filter(toast => toast.id !== t.id) }, 3000);
+         "
+         class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"
+         style="z-index: 1000;">
+        <template x-for="toast in toasts" :key="toast.id">
+            <div x-transition:enter="transition ease-out duration-300 transform"
+                 x-transition:enter-start="translate-y-4 opacity-0"
+                 x-transition:enter-end="translate-y-0 opacity-100"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0"
+                 class="min-w-[250px] bg-[#252526] border border-l-4 shadow-xl rounded px-4 py-3 flex items-start gap-2 pointer-events-auto"
+                 :class="{
+                     'border-l-[#007fd4] border-y-[#333] border-r-[#333]': toast.type === 'info',
+                     'border-l-[#2ea043] border-y-[#333] border-r-[#333]': toast.type === 'success',
+                     'border-l-[#d29922] border-y-[#333] border-r-[#333]': toast.type === 'warning',
+                     'border-l-[#da3633] border-y-[#333] border-r-[#333]': toast.type === 'error'
+                 }">
+                 <div class="mt-0.5">
+                    <template x-if="toast.type === 'success'">
+                        <svg class="w-4 h-4 text-[#2ea043]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    </template>
+                    <template x-if="toast.type === 'info'">
+                        <svg class="w-4 h-4 text-[#007fd4]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </template>
+                    <template x-if="toast.type === 'warning'">
+                        <svg class="w-4 h-4 text-[#d29922]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    </template>
+                    <template x-if="toast.type === 'error'">
+                        <svg class="w-4 h-4 text-[#da3633]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </template>
+                 </div>
+                <span class="text-sm font-medium text-[#d4d4d4]" x-text="toast.message"></span>
+            </div>
+        </template>
+    </div>
+
     {{-- Modales globales --}}
     <livewire:modals.task-form />
     <livewire:modals.period-form />
