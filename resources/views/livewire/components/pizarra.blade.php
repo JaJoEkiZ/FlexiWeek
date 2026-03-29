@@ -26,6 +26,11 @@
         .pizarra-root.is-selecting * { cursor: crosshair !important; }
         .pizarra-root *, .pizarra-root *::before, .pizarra-root *::after { box-sizing: border-box; }
 
+        .pizarra-root .pz-item.pz-group {
+            border-radius: 0; /* Esquinas a 90 grados */
+            border-width: 2px; /* Borde más grueso para resaltar */
+        }
+
         /* CANVAS */
         .pizarra-root #pizarra-canvas {
             position: absolute; inset: 0;
@@ -327,9 +332,10 @@
         id="pz-items-layer"
     >
         <template x-for="item in items" :key="item.id">
-            <div
+            <div x-show="!item.parent_id"
                 class="pz-item"
                 :class="{
+                    'pz-group': item.is_group,
                     'selected': selectedId === item.id && selectedIds.length === 0,
                     'multi-selected': selectedIds.includes(item.id),
                     'connecting-source': connectSource && connectSource.id === item.id
@@ -361,15 +367,31 @@
 
                 {{-- Body --}}
                 <div class="pz-item-body" :style="{ fontSize: Math.max(9, 11 * scale) + 'px' }">
-                    <div class="pz-item-notes" x-show="item.notes" x-text="item.notes"></div>
-                    <template x-for="st in (item.subtasks || [])" :key="st.id">
-                        <div class="pz-subtask" :class="{ done: st.is_completed }">
-                            <input type="checkbox" :checked="st.is_completed"
-                                @change.stop="$wire.toggleSubtask(st.id).then(() => $wire.loadItems().then(d => items = d))"
-                            />
-                            <span x-text="st.title"></span>
-                        </div>
-                    </template>
+                <!-- SI ES UNA CAJA NORMAL (Muestra notas y subtareas checkeables) -->
+                   <template x-if="!item.is_group">
+                       <div>
+                           <div class="pz-item-notes" x-show="item.notes" x-text="item.notes"></div>
+                           <template x-for="st in (item.subtasks || [])" :key="st.id">
+                               <div class="pz-subtask" :class="{ done: st.is_completed }">
+                                   <input type="checkbox" :checked="st.is_completed"
+                                       @change.stop="$wire.toggleSubtask(st.id).then(() => $wire.loadItems().then(d => items = d))"
+                                   />
+                                   <span x-text="st.title"></span>
+                               </div>
+                           </template>
+                       </div>
+                   </template>
+                   <!-- SI ES UN GRUPO (Muestra la lista de las cajas/ideas hijas como renglones) -->
+                   <template x-if="item.is_group">
+                       <div class="flex flex-col gap-1 mt-1">
+                           <template x-for="child in (item.children || [])" :key="child.id">
+                               <div class="flex items-center gap-2 text-[#b5cea8]">
+                                   <span class="text-[8px]">▶</span>
+                                   <span class="font-medium whitespace-nowrap overflow-hidden text-ellipsis" x-text="child.title"></span>
+                               </div>
+                           </template>
+                       </div>
+                   </template>
                 </div>
             </div>
         </template>
@@ -492,6 +514,13 @@
                         <div class="pz-context-item" @click="startConnect(contextMenu.target); contextMenu.visible=false">
                             ⟶ Conectar
                         </div>
+                        
+                        <template x-if="contextMenu.target && contextMenu.target.is_group">
+                            <div class="pz-context-item border-b border-[#333]" @click="$wire.ungroupItems(contextMenu.target.id).then(() => { selectedIds=[]; reload(); }); contextMenu.visible=false">
+                                📦 Desagrupar
+                            </div>
+                        </template>
+
                         <div class="pz-context-sep"></div>
                     </div>
                 </template>
@@ -500,6 +529,16 @@
                         <div class="pz-context-item" style="color:#4ec9b0; font-size:10px; padding:4px 10px; cursor:default;">
                             <span x-text="selectedIds.length + ' cajas seleccionadas'"></span>
                         </div>
+                        
+                        <div class="pz-context-item" @click="
+                            groupModal.title = 'Nuevo Grupo';
+                            groupModal.visible = true;
+                            contextMenu.visible = false;
+                            setTimeout(() => { $refs.groupInput && $refs.groupInput.select() }, 50);
+                        ">
+                            📦 Crear Grupo (Contenedor)
+                        </div>
+
                         <div class="pz-context-sep"></div>
                     </div>
                 </template>
@@ -576,6 +615,27 @@
         </div>
     </div>
 
+    {{-- ═══════════════════════════════════════════
+         MODAL CREAR GRUPO
+    ═══════════════════════════════════════════ --}}
+    <div x-show="groupModal.visible" x-cloak class="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4">
+        <div class="bg-[#252526] border border-[#333] rounded-lg shadow-2xl w-full max-w-sm overflow-hidden" @click.outside="groupModal.visible = false">
+            <div class="px-4 py-3 border-b border-[#333] flex justify-between items-center">
+                <h3 class="text-[#d4d4d4] font-medium text-sm">Crear Grupo</h3>
+                <button @click="groupModal.visible = false" class="text-[#7b7b7b] hover:text-white">✕</button>
+            </div>
+            <div class="p-4 custom-scrollbar">
+                <label class="block text-xs text-[#7b7b7b] uppercase tracking-wider mb-2">Nombre del Grupo</label>
+                <input type="text" x-model="groupModal.title" class="w-full bg-[#3c3c3c] border border-[#333] rounded-md text-[#d4d4d4] text-xs p-2 outline-none focus:border-[#007fd4] transition-colors"
+                @keydown.enter="$wire.groupItems(selectedIds, groupModal.title).then(() => { selectedIds=[]; groupModal.visible=false; reload(); })" x-ref="groupInput" />
+                <div class="mt-4 flex justify-end gap-2">
+                    <button @click="groupModal.visible = false" class="px-3 py-1.5 text-xs text-[#d4d4d4] hover:bg-[#333] rounded transition-colors">Cancelar</button>
+                    <button @click="$wire.groupItems(selectedIds, groupModal.title).then(() => { selectedIds=[]; groupModal.visible=false; reload(); })" class="px-3 py-1.5 text-xs bg-[rgba(0,127,212,0.15)] text-[#007fd4] hover:bg-[rgba(0,127,212,0.3)] rounded transition-colors">Crear</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- HINT --}}
     <div class="pz-hint">doble click para crear · click derecho para opciones · click scroll para moverse · scroll para zoom</div>
 
@@ -617,6 +677,9 @@
 
         // Modal de periodos
         periodModal: { visible: false, targetItem: null, periods: [], loading: false },
+        
+        // Modal de grupo
+        groupModal: { visible: false, title: '' },
 
         // UX Drag
         currentDropZone: null,
@@ -641,6 +704,7 @@
                     this.tempLine = null;
                     this.contextMenu.visible = false;
                     this.periodModal.visible = false;
+                    this.groupModal.visible = false;
                     this.clearSelection();
                     if (this.panelOpen) {
                         this.closePanel();
@@ -669,10 +733,27 @@
         get allConnections() {
             const conns = [];
             this.items.forEach(item => {
-                (item.connections_from || []).forEach(c => conns.push(c));
+                (item.connections_from || []).forEach(c => {
+                    // Evaluamos si el Origen o Destino real está metido adentro de un grupo.
+                    // Si lo está, la flecha tiene que salir/entrar desde el ID del Padre visible.
+                    
+                    const realFrom = this.items.find(i => i.id === c.from_item_id);
+                    const realTo = this.items.find(i => i.id === c.to_item_id);
+                
+                    const displayFromId = (realFrom && realFrom.parent_id) ? realFrom.parent_id : c.from_item_id;
+                    const displayToId = (realTo && realTo.parent_id) ? realTo.parent_id : c.to_item_id;
+                
+                    // Pusheamos una copia manipulada para el dibujante de flechas
+                    conns.push({
+                        ...c,
+                        display_from_id: displayFromId,
+                        display_to_id: displayToId
+                    });
+                });
             });
             return conns;
         },
+
 
         // ─── RENDER CONEXIONES (programático, Alpine x-for no funciona en SVG) ────
         renderConnections() {
@@ -689,7 +770,7 @@
                 if (!pathD) return;
 
                 // Color de la caja origen
-                const fromItem = this.items.find(i => i.id == conn.from_item_id);
+                const fromItem = this.items.find(i => i.id == (conn.display_from_id || conn.from_item_id));
                 const color = fromItem ? fromItem.color : '#007fd4';
 
                 // Hitbox invisible (más ancho para facilitar click derecho)
@@ -1141,8 +1222,8 @@
         },
 
         getConnectionPath(conn) {
-            const from = this.items.find(i => i.id == conn.from_item_id);
-            const to   = this.items.find(i => i.id == conn.to_item_id);
+            const from = this.items.find(i => i.id == (conn.display_from_id || conn.from_item_id));
+            const to   = this.items.find(i => i.id == (conn.display_to_id || conn.to_item_id));
             if (!from || !to) return '';
             const fx = parseFloat(from.pos_x), fy = parseFloat(from.pos_y);
             const fw = parseFloat(from.width), fh = parseFloat(from.height);
@@ -1188,8 +1269,8 @@
         },
 
         getConnectionEndpoint(conn) {
-            const from = this.items.find(i => i.id == conn.from_item_id);
-            const to   = this.items.find(i => i.id == conn.to_item_id);
+            const from = this.items.find(i => i.id == (conn.display_from_id || conn.from_item_id));
+            const to   = this.items.find(i => i.id == (conn.display_to_id || conn.to_item_id));
             if (!from || !to) return null;
             const tx = parseFloat(to.pos_x), ty = parseFloat(to.pos_y);
             const tw = parseFloat(to.width), th = parseFloat(to.height);

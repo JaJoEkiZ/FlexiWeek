@@ -16,6 +16,8 @@ class BoardItem extends Model
         'height',
         'color',
         'z_index',
+        'is_group',
+        'parent_id',
     ];
 
     protected $casts = [
@@ -45,7 +47,14 @@ class BoardItem extends Model
     {
         return $this->hasMany(BoardConection::class, 'to_item_id');
     }
-
+    public function children()
+    {
+        return $this->hasMany(BoardItem::class, 'parent_id');
+    }
+    public function parent()
+    {
+        return $this->belongsTo(BoardItem::class, 'parent_id');
+    }
     // Eliminar subtareas y conexiones manualmente (compatible con sqlsrv)
     protected static function booted()
     {

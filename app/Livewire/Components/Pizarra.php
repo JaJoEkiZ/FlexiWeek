@@ -21,6 +21,56 @@ class Pizarra extends Component
     {
         $this->loadItems();
     }
+    public function groupItems(array $ids, ?string $title = 'Nuevo Grupo')
+    {
+        $itemsToGroup = BoardItem::where('user_id', auth()->id())
+            ->whereIn('id', $ids)
+            ->get();
+
+        if ($itemsToGroup->isEmpty()) return;
+
+        $avgX = $itemsToGroup->avg('pos_x');
+        $avgY = $itemsToGroup->avg('pos_y');
+        $maxZ = BoardItem::where('user_id', auth()->id())->max('z_index') ?? 0;
+
+        $group = BoardItem::create([
+            'user_id' => auth()->id(),
+            'title'   => empty($title) ? 'Nuevo Grupo' : $title,
+            'pos_x'   => $avgX,
+            'pos_y'   => $avgY,
+            'width'   => 230,
+            'height'  => 50,
+            'color'   => '#007fd4', // Color base
+            'z_index' => $maxZ + 1,
+            'is_group'=> true,
+        ]);
+
+        // Asociar las ideas a este nuevo contenedor
+        BoardItem::whereIn('id', $ids)
+                 ->where('user_id', auth()->id())
+                 ->update(['parent_id' => $group->id]);
+
+        $this->loadItems();
+    }
+    public function ungroupItems($groupId)
+    {
+        $group = BoardItem::where('user_id', auth()->id())
+            ->where('id', $groupId)
+            ->where('is_group', true)
+            ->first();
+
+        if (!$group) return;
+
+        // Desasociar las ideas a este contenedor
+        BoardItem::where('parent_id', $group->id)
+                 ->where('user_id', auth()->id())
+                 ->update(['parent_id' => null]);
+
+        $group->delete();
+
+        $this->loadItems();
+    }
+
 
     public function render()
     {
@@ -40,7 +90,7 @@ class Pizarra extends Component
 
     public function loadItems()
     {
-        $this->items = BoardItem::with(['subtasks', 'connectionsFrom', 'connectionsTo'])
+        $this->items = BoardItem::with(['subtasks', 'connectionsFrom', 'connectionsTo', 'children'])
             ->where('user_id', auth()->id())
             ->get()
             ->toArray();
@@ -247,7 +297,22 @@ class Pizarra extends Component
         }
 
         $promotedIds[] = $itemId;
+        if ($item->is_group) {
+            // Si mandamos un Grupo a la semana, extraemos cada hija como tarea suelta
+            foreach ($item->children as $child) {
+                // La desligamos del padre solo por si acaso
+                $child->update(['parent_id' => null]);
+                $promotedIds = $this->promoteToTask($child->id, $periodId, $promotedIds);
+            }
+            // Una vez vaciado, borramos la caja de la carpeta en la pizarra
+            $item->delete();
 
+            if (count($promotedIds) === 1 || func_num_args() === 2) {
+                $this->loadItems();
+                $this->dispatch('taskSaved');
+            }
+            return $promotedIds;
+        }
         // 1. Obtener el orden máximo en el periodo actual
         $maxOrder = Task::where('period_id', $periodId)->max('sort_order') ?? 0;
 
