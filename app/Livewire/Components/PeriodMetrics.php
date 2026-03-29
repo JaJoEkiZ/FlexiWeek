@@ -142,6 +142,9 @@ class PeriodMetrics extends Component
 
         $completionRate = $total > 0 ? round(($completed / $total) * 100) : 0;
 
+        $totalSubtasks = $tasks->sum(fn ($t) => $t->subtasks->count());
+        $completedSubtasks = $tasks->sum(fn ($t) => $t->subtasks->where('is_completed', true)->count());
+
         // Determinar si el período ha terminado para mostrar tiempo ganado
         $isPeriodOver = false;
         if ($this->mode === 'period') {
@@ -175,6 +178,8 @@ class PeriodMetrics extends Component
             'overTimeCount' => $overTimeTasks->count(),
             'avgTimePerTask' => $avgTimePerTask,
             'completionRate' => $completionRate,
+            'totalSubtasks'  => $totalSubtasks,
+            'completedSubtasks' => $completedSubtasks,
             // Datos para Chart.js
             'statusChart' => [
                 'labels' => ['Completadas', 'Pendientes', 'En Curso', 'Pausadas', 'Canceladas'],
@@ -211,6 +216,8 @@ class PeriodMetrics extends Component
             'overTimeCount' => 0,
             'avgTimePerTask' => 0,
             'completionRate' => 0,
+            'totalSubtasks'  => 0,
+            'completedSubtasks' => 0,
             'statusChart' => ['labels' => [], 'data' => [], 'colors' => []],
             'timeChart' => ['labels' => [], 'estimated' => [], 'spent' => []],
         ];

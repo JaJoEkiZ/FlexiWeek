@@ -168,6 +168,10 @@
                         <span class="text-xs text-[#8b949e]">Excedieron tiempo</span>
                         <span class="text-sm font-mono {{ $metrics['overTimeCount'] > 0 ? 'text-[#f85149]' : 'text-[#4ec9b0]' }}">{{ $metrics['overTimeCount'] }}</span>
                     </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-[#8b949e]">Subtareas (Completadas / Total)</span>
+                        <span class="text-sm font-mono text-[#dcdcaa]">{{ $metrics['completedSubtasks'] }} / {{ $metrics['totalSubtasks'] }}</span>
+                    </div>
                     @if($mode === 'range')
                         <div class="flex justify-between items-center">
                             <span class="text-xs text-[#8b949e]">Períodos incluidos</span>
