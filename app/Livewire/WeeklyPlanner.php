@@ -107,6 +107,43 @@ class WeeklyPlanner extends Component
         session()->flash('message', 'Tarea reactivada.');
     }
 
+    public function sendToPizarra($taskId)
+    {
+        $task = Task::with('subtasks')->findOrFail($taskId);
+        
+        // Verificar propiedad
+        if ($task->period->user_id !== auth()->id()) {
+            return;
+        }
+
+        $maxZ = \App\Models\BoardItem::where('user_id', auth()->id())->max('z_index') ?? 0;
+
+        $item = \App\Models\BoardItem::create([
+            'user_id' => auth()->id(),
+            'title'   => $task->title,
+            'notes'   => null,
+            'pos_x'   => 100, // Posición por defecto
+            'pos_y'   => 100,
+            'width'   => 200,
+            'height'  => 70,
+            'color'   => '#3B82F6', // Azul por defecto
+            'z_index' => $maxZ + 1,
+        ]);
+
+        foreach ($task->subtasks as $st) {
+            \App\Models\BoardItemSubtask::create([
+                'board_item_id' => $item->id,
+                'title' => $st->title,
+                'is_completed' => $st->is_completed,
+            ]);
+        }
+
+        $task->delete(); // Eliminar la tarea original
+
+        session()->flash('message', 'Tarea enviada a la pizarra.');
+        $this->dispatch('$refresh');
+    }
+
     public function addTime($taskId)
     {
         $task = Task::findOrFail($taskId);
