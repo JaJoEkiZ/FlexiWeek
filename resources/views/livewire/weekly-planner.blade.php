@@ -378,15 +378,12 @@
         .period-drop-zone.task-received { animation: receiveTask 0.6s ease-out forwards; }
     </style>
 
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-
+    @script
     <script>
-        document.addEventListener('livewire:initialized', () => {
-            initSortable();
+        initSortable();
 
-            Livewire.hook('morph.updated', ({ component, el }) => {
-                initSortable();
-            });
+        Livewire.hook('morph.updated', ({ component, el }) => {
+            initSortable();
         });
         
         function initSortable() {
@@ -468,4 +465,5 @@
             });
         }
     </script>
+    @endscript
 </x-planner-layout>

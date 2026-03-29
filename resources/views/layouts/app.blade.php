@@ -8,6 +8,7 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </head>
 <body class="bg-[#1e1e1e] text-[#d4d4d4] font-sans antialiased min-h-screen flex flex-col">
     <style>[x-cloak] { display: none !important; }</style>
