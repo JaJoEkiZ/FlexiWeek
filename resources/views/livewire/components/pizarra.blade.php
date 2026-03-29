@@ -449,27 +449,53 @@
                         </div>
                     </div>
 
-                    {{-- Subtareas --}}
+                    {{-- Subtareas o Ideas --}}
                     <div class="pz-field">
-                        <label>Subtareas</label>
-                        <div class="pz-subtasks-list">
-                            <template x-for="st in (editItem.subtasks || [])" :key="st.id">
-                                <div class="pz-subtask-row" :class="{ done: st.is_completed }">
-                                    <input type="checkbox" :checked="st.is_completed"
-                                        @change="toggleSubtaskPanel(st)"
-                                    />
-                                    <span x-text="st.title"></span>
-                                    <button class="pz-subtask-del" @click="deleteSubtaskPanel(st.id)">✕</button>
+                        <label x-text="editItem.is_group ? 'Ideas del Grupo' : 'Subtareas'"></label>
+                        
+                        <template x-if="!editItem.is_group">
+                            <div>
+                                <div class="pz-subtasks-list">
+                                    <template x-for="st in (editItem.subtasks || [])" :key="st.id">
+                                        <div class="pz-subtask-row" :class="{ done: st.is_completed }">
+                                            <input type="checkbox" :checked="st.is_completed"
+                                                @change="toggleSubtaskPanel(st)"
+                                            />
+                                            <span x-text="st.title"></span>
+                                            <button class="pz-subtask-del" title="Eliminar subtarea" @click="deleteSubtaskPanel(st.id)">✕</button>
+                                        </div>
+                                    </template>
                                 </div>
-                            </template>
-                        </div>
-                        <div class="pz-add-subtask">
-                            <input type="text" x-model="newSubtaskTitle"
-                                placeholder="Nueva subtarea..."
-                                @keydown.enter="addSubtaskPanel()"
-                            />
-                            <button @click="addSubtaskPanel()">＋</button>
-                        </div>
+                                <div class="pz-add-subtask">
+                                    <input type="text" x-model="newSubtaskTitle"
+                                        placeholder="Nueva subtarea..."
+                                        @keydown.enter="addSubtaskPanel()"
+                                    />
+                                    <button @click="addSubtaskPanel()">＋</button>
+                                </div>
+                            </div>
+                        </template>
+
+                        <template x-if="editItem.is_group">
+                            <div>
+                                <div class="pz-subtasks-list">
+                                    <template x-for="child in (editItem.children || [])" :key="child.id">
+                                        <div class="pz-subtask-row">
+                                            <span style="margin-left:4px; font-size:9px; color:#555">▶</span>
+                                            <span x-text="child.title"></span>
+                                            <button class="pz-subtask-del" title="Extraer de este grupo" @click="extractChildPanel(child.id)">✕</button>
+                                        </div>
+                                    </template>
+                                </div>
+                                <div class="pz-add-subtask">
+                                    <input type="text" x-model="newSubtaskTitle"
+                                        placeholder="Nueva idea..."
+                                        @keydown.enter="addChildPanel()"
+                                    />
+                                    <button @click="addChildPanel()">＋</button>
+                                </div>
+                            </div>
+                        </template>
                     </div>
                     {{-- Guardar --}}
                     <button class="pz-save-btn" @click.stop="saveAllPanelFields()">
@@ -636,6 +662,53 @@
         </div>
     </div>
 
+    {{-- ═══════════════════════════════════════════
+         MODAL PROMOVER GRUPO (SELECCIÓN DE HIJOS)
+    ═══════════════════════════════════════════ --}}
+    <div x-show="groupPromoteModal.visible" x-cloak class="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4">
+        <div class="bg-[#252526] border border-[#333] rounded-lg shadow-2xl w-full max-w-sm overflow-hidden" @click.outside="groupPromoteModal.visible = false">
+            <div class="px-4 py-3 border-b border-[#333] flex justify-between items-center">
+                <h3 class="text-[#d4d4d4] font-medium text-sm">Transferir a Semana</h3>
+                <button @click="groupPromoteModal.visible = false" class="text-[#7b7b7b] hover:text-white">✕</button>
+            </div>
+            <div class="p-4 custom-scrollbar max-h-[80vh] overflow-y-auto">
+                <p class="text-xs text-[#7b7b7b] mb-4">Seleccioná qué ideas de <strong class="text-[#d4d4d4]" x-text="groupPromoteModal.targetGroup?.title"></strong> pasar a la semana.</p>
+                
+                <div class="mb-3 pb-2 border-b border-[#333]">
+                    <label class="flex items-center gap-2 text-[#d4d4d4] text-xs cursor-pointer hover:bg-[#333] p-1 rounded transition-colors">
+                        <input type="checkbox" x-model="groupPromoteModal.selectAll" @change="
+                            if (groupPromoteModal.selectAll) {
+                                groupPromoteModal.selectedChildIds = groupPromoteModal.children.map(c => c.id);
+                            } else {
+                                groupPromoteModal.selectedChildIds = [];
+                            }
+                        " class="accent-[#007fd4]">
+                        <span class="font-medium">Agregar Todo</span>
+                    </label>
+                </div>
+                
+                <div class="flex flex-col gap-1">
+                    <template x-for="child in groupPromoteModal.children" :key="child.id">
+                        <label class="flex items-center gap-2 text-[#b5cea8] text-xs cursor-pointer hover:bg-[#333] p-1.5 rounded transition-colors">
+                            <input type="checkbox" :value="child.id" x-model="groupPromoteModal.selectedChildIds" @change="
+                                groupPromoteModal.selectAll = groupPromoteModal.selectedChildIds.length === groupPromoteModal.children.length;
+                            " class="accent-[#007fd4]">
+                            <span class="truncate" x-text="child.title"></span>
+                        </label>
+                    </template>
+                </div>
+
+                <div class="mt-5 flex justify-end gap-2">
+                    <button @click="groupPromoteModal.visible = false" class="px-3 py-1.5 text-xs text-[#d4d4d4] hover:bg-[#333] rounded transition-colors">Cancelar</button>
+                    <button @click="
+                        $wire.promoteToTask(groupPromoteModal.targetGroup.id, groupPromoteModal.targetPeriodId, [], groupPromoteModal.selectedChildIds)
+                            .then(() => { groupPromoteModal.visible = false; reload(); })
+                    " class="px-3 py-1.5 text-xs bg-[rgba(0,127,212,0.15)] text-[#007fd4] hover:bg-[rgba(0,127,212,0.3)] rounded transition-colors" :disabled="groupPromoteModal.selectedChildIds.length === 0">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- HINT --}}
     <div class="pz-hint">doble click para crear · click derecho para opciones · click scroll para moverse · scroll para zoom</div>
 
@@ -681,6 +754,9 @@
         // Modal de grupo
         groupModal: { visible: false, title: '' },
 
+        // Modal de promover grupo (selección de hijas)
+        groupPromoteModal: { visible: false, targetGroup: null, targetPeriodId: null, children: [], selectedChildIds: [], selectAll: true },
+
         // UX Drag
         currentDropZone: null,
 
@@ -705,6 +781,7 @@
                     this.contextMenu.visible = false;
                     this.periodModal.visible = false;
                     this.groupModal.visible = false;
+                    this.groupPromoteModal.visible = false;
                     this.clearSelection();
                     if (this.panelOpen) {
                         this.closePanel();
@@ -937,9 +1014,18 @@
                 if (dropZone) {
                     const periodId = dropZone.getAttribute('data-period-id');
                     if (periodId) {
-                        this.$wire.promoteToTask(this.dragging.id, periodId).then(() => {
-                            this.reload();
-                        });
+                        if (this.dragging.is_group) {
+                            this.groupPromoteModal.targetGroup = this.dragging;
+                            this.groupPromoteModal.targetPeriodId = periodId;
+                            this.groupPromoteModal.children = this.dragging.children || [];
+                            this.groupPromoteModal.selectedChildIds = this.groupPromoteModal.children.map(c => c.id);
+                            this.groupPromoteModal.selectAll = true;
+                            this.groupPromoteModal.visible = true;
+                        } else {
+                            this.$wire.promoteToTask(this.dragging.id, periodId).then(() => {
+                                this.reload();
+                            });
+                        }
                     }
                 } else {
                     this.savePosition(this.dragging);
@@ -1111,10 +1197,19 @@
 
         promoteToPeriod(periodId) {
             if (!this.periodModal.targetItem) return;
-            const itemId = this.periodModal.targetItem.id;
+            const item = this.periodModal.targetItem;
             this.periodModal.visible = false;
-            // Al promover, se recargará automáticamente la Pizarra en el backend
-            this.$wire.promoteToTask(itemId, periodId);
+            
+            if (item.is_group) {
+                this.groupPromoteModal.targetGroup = item;
+                this.groupPromoteModal.targetPeriodId = periodId;
+                this.groupPromoteModal.children = item.children || [];
+                this.groupPromoteModal.selectedChildIds = this.groupPromoteModal.children.map(c => c.id);
+                this.groupPromoteModal.selectAll = true;
+                this.groupPromoteModal.visible = true;
+            } else {
+                this.$wire.promoteToTask(item.id, periodId).then(() => this.reload());
+            }
         },
 
         // ─── PANEL ───────────────────────────────
@@ -1184,6 +1279,26 @@
 
         deleteSubtaskPanel(stId) {
             this.$wire.deleteSubtask(stId).then(() => {
+                this.reload().then(() => {
+                    const updated = this.items.find(i => i.id === this.editItem.id);
+                    if (updated) this.editItem = JSON.parse(JSON.stringify(updated));
+                });
+            });
+        },
+
+        addChildPanel() {
+            if (!this.newSubtaskTitle.trim()) return;
+            this.$wire.addChildToGroup(this.editItem.id, this.newSubtaskTitle).then(() => {
+                this.newSubtaskTitle = '';
+                this.reload().then(() => {
+                    const updated = this.items.find(i => i.id === this.editItem.id);
+                    if (updated) this.editItem = JSON.parse(JSON.stringify(updated));
+                });
+            });
+        },
+
+        extractChildPanel(childId) {
+            this.$wire.extractFromGroup(childId).then(() => {
                 this.reload().then(() => {
                     const updated = this.items.find(i => i.id === this.editItem.id);
                     if (updated) this.editItem = JSON.parse(JSON.stringify(updated));

@@ -192,6 +192,35 @@ class Pizarra extends Component
         $this->loadItems();
     }
 
+    public function addChildToGroup($groupId, $title)
+    {
+        $group = BoardItem::where('id', $groupId)->where('user_id', auth()->id())->firstOrFail();
+        
+        $maxZ = BoardItem::where('user_id', auth()->id())->max('z_index') ?? 0;
+
+        BoardItem::create([
+            'user_id' => auth()->id(),
+            'title' => $title,
+            'parent_id' => $group->id,
+            'pos_x' => $group->pos_x + 20,
+            'pos_y' => $group->pos_y + 20,
+            'width' => 200,
+            'height' => 70,
+            'color' => '#3B82F6',
+            'z_index' => $maxZ + 1,
+        ]);
+
+        $this->loadItems();
+    }
+
+    public function extractFromGroup($childId)
+    {
+        $child = BoardItem::where('id', $childId)->where('user_id', auth()->id())->firstOrFail();
+        $child->update(['parent_id' => null]);
+        
+        $this->loadItems();
+    }
+
     public function addConnection($fromId, $toId, $type = 'depends_start')
     {
         // Verificar que ambas cajas pertenezcan al usuario
@@ -280,7 +309,7 @@ class Pizarra extends Component
             ->toArray();
     }
 
-    public function promoteToTask($itemId, $periodId, $promotedIds = [])
+    public function promoteToTask($itemId, $periodId, $promotedIds = [], $selectedChildIds = null)
     {
         // Evitar ciclos infinitos en caso de conexiones circulares
         if (in_array($itemId, $promotedIds)) {
@@ -298,16 +327,32 @@ class Pizarra extends Component
 
         $promotedIds[] = $itemId;
         if ($item->is_group) {
-            // Si mandamos un Grupo a la semana, extraemos cada hija como tarea suelta
+            $remainingCount = 0;
+            // Si mandamos un Grupo a la semana, extraemos las hijas seleccionadas
             foreach ($item->children as $child) {
-                // La desligamos del padre solo por si acaso
+                if (is_array($selectedChildIds) && !in_array($child->id, $selectedChildIds)) {
+                    $remainingCount++;
+                    continue; // Se queda en el grupo
+                }
+                // Si pasa la condición, la promovemos
                 $child->update(['parent_id' => null]);
                 $promotedIds = $this->promoteToTask($child->id, $periodId, $promotedIds);
             }
-            // Una vez vaciado, borramos la caja de la carpeta en la pizarra
-            $item->delete();
+            
+            if ($remainingCount === 1) {
+                // Sólo quedó 1 huérfana, la soltamos y borramos el grupo
+                $orphan = BoardItem::where('parent_id', $item->id)->first();
+                if ($orphan) {
+                    $orphan->update(['parent_id' => null]);
+                }
+                $item->delete();
+            } elseif ($remainingCount === 0) {
+                // No quedó nadie, borramos el grupo
+                $item->delete();
+            }
+            // Si quedan > 1, el grupo simplemente continúa existiendo con ellas adentro.
 
-            if (count($promotedIds) === 1 || func_num_args() === 2) {
+            if (count($promotedIds) === 1 || in_array(func_num_args(), [2, 4])) {
                 $this->loadItems();
                 $this->dispatch('taskSaved');
             }
@@ -348,7 +393,7 @@ class Pizarra extends Component
         $item->delete();
 
         // Si es la primera llamada de la recursión, disparamos recarga
-        if (count($promotedIds) === 1 || func_num_args() === 2) {
+        if (count($promotedIds) === 1 || in_array(func_num_args(), [2, 4])) {
             $this->loadItems();
             $this->dispatch('taskSaved'); // Actualiza el WeeklyPlanner para que muestre la nueva tarea
         }
