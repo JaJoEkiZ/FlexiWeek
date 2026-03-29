@@ -9,8 +9,10 @@ use App\Models\BoardItemSubtask;
 use App\Models\Period;
 use App\Models\Subtask;
 use App\Models\Task;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 
+#[Layout('layouts.app')]
 class Pizarra extends Component
 {
     public array $items = [];
@@ -18,6 +20,22 @@ class Pizarra extends Component
     public function mount()
     {
         $this->loadItems();
+    }
+
+    public function render()
+    {
+        $today = now()->format('Y-m-d');
+        $currentPeriod = Period::where('user_id', auth()->id())
+            ->where('end_date', '>=', $today)
+            ->orderBy('start_date', 'asc')
+            ->first()
+            ?? Period::where('user_id', auth()->id())
+                ->orderBy('start_date', 'desc')
+                ->first();
+
+        return view('livewire.components.pizarra', [
+            'currentPeriod' => $currentPeriod,
+        ]);
     }
 
     public function loadItems()
@@ -271,10 +289,5 @@ class Pizarra extends Component
         }
 
         return $promotedIds;
-    }
-
-    public function render()
-    {
-        return view('livewire.components.pizarra');
     }
 }

@@ -1,57 +1,8 @@
-<div x-data="{ sidebarOpen: window.innerWidth >= 768, ctxMenu: { show: false, x: 0, y: 0, taskId: null } }" @click="ctxMenu.show = false" class="flex h-screen bg-[#1e1e1e] text-[#d4d4d4] font-sans antialiased relative">
-    
-    <div x-show="sidebarOpen" 
-         @click="sidebarOpen = false"
-         x-transition:enter="transition-opacity ease-linear duration-300"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="transition-opacity ease-linear duration-300"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0"
-         class="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden">
-    </div>
-    
-    <div :class="sidebarOpen ? 'translate-x-0 shadow-xl' : '-translate-x-full'" class="fixed inset-y-0 left-0 z-40 w-64 bg-[#252526] border-r border-[#333] p-4 overflow-y-auto custom-scrollbar transform transition-transform duration-300 ease-in-out">
-        <livewire:components.sidebar :selectedPeriodId="$selectedPeriodId" wire:key="sidebar-main-component" />
-    </div>
-
-    <div :class="sidebarOpen ? 'md:ml-64' : ''" class="flex-1 flex flex-col h-full bg-[#1e1e1e] w-full transition-all duration-300 ease-in-out overflow-hidden">
-        
-        @if($currentPeriod)
-            <div class="flex-shrink-0 z-10 bg-[#1e1e1e]">
-                <livewire:components.task-navbar :selectedPeriodId="$currentPeriod->id" wire:key="navbar-{{ $currentPeriod->id }}" />
-            </div>
-            
-            {{-- Tab Toggle: Tareas / Métricas / Pizarra --}}
-            <div class="flex-shrink-0 bg-[#1e1e1e] px-3 lg:px-8 pt-3">
-                <div class="inline-flex bg-[#252526] rounded border border-[#333] overflow-hidden shadow-sm">
-                    <button wire:click="setActiveTab('tasks')"
-                            class="px-3 md:px-4 py-1.5 md:py-2 text-[10px] md:text-xs font-medium transition-all flex items-center gap-1
-                            {{ $activeTab === 'tasks' ? 'bg-[#007fd4] text-white' : 'text-[#8b949e] hover:text-white hover:bg-[#333]' }}">
-                        📋 Tareas
-                    </button>
-                    <button wire:click="setActiveTab('metrics')"
-                            class="px-3 md:px-4 py-1.5 md:py-2 text-[10px] md:text-xs font-medium transition-all flex items-center gap-1
-                            {{ $activeTab === 'metrics' ? 'bg-[#007fd4] text-white' : 'text-[#8b949e] hover:text-white hover:bg-[#333]' }}">
-                        📊 Métricas
-                    </button>
-                    <button wire:click="setActiveTab('board')"
-                            class="px-3 md:px-4 py-1.5 md:py-2 text-[10px] md:text-xs font-medium transition-all flex items-center gap-1
-                            {{ $activeTab === 'board' ? 'bg-[#007fd4] text-white' : 'text-[#8b949e] hover:text-white hover:bg-[#333]' }}">
-                        🎨 Pizarra
-                    </button>
-                </div>
-            </div>
-            
-            <div class="flex-1 {{ $activeTab === 'board' ? 'overflow-hidden' : 'overflow-y-auto custom-scrollbar p-3 lg:p-8 pb-24 lg:pb-8' }}">
-
-                {{-- ===== VISTA MÉTRICAS ===== --}}
-                @if($activeTab === 'metrics')
-                    <livewire:components.period-metrics :selectedPeriodId="$currentPeriod->id" wire:key="metrics-{{ $currentPeriod->id }}" />
-                @endif
-
-                @if($activeTab === 'tasks')
-
+<x-planner-layout
+    :selectedPeriodId="$selectedPeriodId"
+    :currentPeriod="isset($currentPeriod) ? $currentPeriod : null"
+    activeTab="tasks"
+>
                 {{-- ===== VISTA MÓVIL: TARJETAS (< md) ===== --}}
                 <div id="mobile-tasks-container" class="lg:hidden space-y-3 min-h-[50px]">
                     @forelse($tasks as $task)
@@ -393,59 +344,6 @@
                 <div class="mt-4">
                     {{ $tasks->links() }}
                 </div>
-                @endif {{-- cierre @if tasks --}}
-
-                {{-- ===== VISTA PIZARRA ===== --}}
-                @if($activeTab === 'board')
-                    <livewire:components.pizarra wire:key="pizarra-{{ $currentPeriod->id }}" />
-                @endif
-            </div>
-        @else
-            <div class="flex flex-col items-center justify-center h-full text-[#7b7b7b]">
-                <div class="text-6xl mb-4 opacity-20">No hay semanas activas</div>
-                <p class="font-mono text-sm">Genera una semana para comenzar...</p>
-            </div>
-        @endif
-    </div>
-
-    <livewire:modals.task-form />
-    <livewire:modals.period-form />
-    <livewire:modals.task-details />
-    <livewire:modals.duplicate-task />
-    <livewire:modals.metrics-task-details />
-
-    <!-- Context Menu -->
-    <div x-show="ctxMenu.show" 
-         x-transition:enter="transition ease-out duration-100"
-         x-transition:enter-start="opacity-0 scale-95"
-         x-transition:enter-end="opacity-100 scale-100"
-         x-transition:leave="transition ease-in duration-75"
-         x-transition:leave-start="opacity-100 scale-100"
-         x-transition:leave-end="opacity-0 scale-95"
-         :style="`position: fixed; left: ${ctxMenu.x}px; top: ${ctxMenu.y}px; z-index: 100;`"
-         @click.away="ctxMenu.show = false"
-         class="bg-[#252526] border border-[#333] rounded shadow-xl py-1 min-w-[160px]">
-        <button @click="$wire.dispatch('openDuplicateTask', { taskId: ctxMenu.taskId }); ctxMenu.show = false" 
-                class="w-full text-left px-4 py-2 text-sm text-[#d4d4d4] hover:bg-[#094771] flex items-center gap-2 transition-colors">
-            📋 Duplicar
-        </button>
-        <button @click="$wire.finishTask(ctxMenu.taskId); ctxMenu.show = false" 
-                class="w-full text-left px-4 py-2 text-sm text-[#7ee787] hover:bg-[#1e3a23] flex items-center gap-2 transition-colors">
-            ✓ Finalizar tarea
-        </button>
-
-
-        <div class="border-t border-[#333] my-1"></div>
-        <button @click="$wire.cancelTask(ctxMenu.taskId); ctxMenu.show = false" 
-                class="w-full text-left px-4 py-2 text-sm text-[#f85149] hover:bg-[#3b1219] flex items-center gap-2 transition-colors">
-            ✕ Cancelar tarea
-        </button>
-        <button @click="$wire.reactivateTask(ctxMenu.taskId); ctxMenu.show = false" 
-                class="w-full text-left px-4 py-2 text-sm text-[#4ec9b0] hover:bg-[#1e3a23] flex items-center gap-2 transition-colors">
-            ↩ Reactivar tarea
-        </button>
-    </div>
-
     <style>
         .custom-scrollbar::-webkit-scrollbar { width: 10px; background-color: #1e1e1e; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #424242; border-radius: 5px; border: 2px solid #1e1e1e; }
@@ -570,4 +468,4 @@
             });
         }
     </script>
-</div>
+</x-planner-layout>

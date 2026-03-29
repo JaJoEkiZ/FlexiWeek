@@ -1,3 +1,9 @@
+<x-planner-layout
+    :selectedPeriodId="null"
+    :currentPeriod="isset($currentPeriod) ? $currentPeriod : null"
+    activeTab="board"
+>
+
 <div
     x-data="pizarra(@js($items))"
     x-init="init()"
@@ -1261,3 +1267,4 @@
     @endscript
 
 </div>
+</x-planner-layout>

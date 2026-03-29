@@ -6,9 +6,11 @@ use App\Enums\TaskStatus;
 use App\Models\Period;
 use App\Models\Task;
 use App\Models\TaskTimeLog;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
 
+#[Layout('layouts.app')]
 class WeeklyPlanner extends Component
 {
     use WithPagination;
@@ -16,32 +18,40 @@ class WeeklyPlanner extends Component
     protected $paginationTheme = 'tailwind';
 
     public $selectedPeriodId;
-
-    public $activeTab = 'tasks';
-
     public $minutesInput = [];
-
     public $hoursInput = [];
-
     public $selectedSubtask = [];
 
-    // Estado del Modal de Edición (Ahora manejado por TaskForm)
-
-    public function mount()
+    public function mount($period = null)
     {
-        // Seleccionar por defecto la semana actual o la siguiente más próxima
-        $today = now()->format('Y-m-d');
-        $this->selectedPeriodId = Period::where('user_id', auth()->id())
-            ->where('end_date', '>=', $today)
-            ->orderBy('start_date', 'asc')
-            ->first()?->id
-            ?? Period::where('user_id', auth()->id())->orderBy('start_date', 'desc')->first()?->id; // Fallback a la última si no hay futuras
+        if ($period) {
+            // Vino un period ID en la URL — verificar que le pertenece al usuario
+            $exists = Period::where('id', $period)
+                ->where('user_id', auth()->id())
+                ->exists();
+            $this->selectedPeriodId = $exists ? $period : null;
+        }
+
+        // Si no vino period en la URL o no era válido, usar el default
+        if (! $this->selectedPeriodId) {
+            $today = now()->format('Y-m-d');
+            $this->selectedPeriodId = Period::where('user_id', auth()->id())
+                ->where('end_date', '>=', $today)
+                ->orderBy('start_date', 'asc')
+                ->first()?->id
+                ?? Period::where('user_id', auth()->id())
+                    ->orderBy('start_date', 'desc')
+                    ->first()?->id;
+        }
     }
 
     public function selectPeriod($periodId)
     {
         $this->selectedPeriodId = $periodId;
         $this->resetPage();
+
+        // Actualizar la URL para reflejar el período seleccionado
+        $this->redirect(route('planner', $periodId), navigate: true);
     }
 
     public function cycleStatus($taskId)
@@ -52,7 +62,6 @@ class WeeklyPlanner extends Component
             return;
         }
 
-        // Excluimos 'Completed' y 'Cancelled' del ciclo manual
         $statuses = collect(TaskStatus::cases())
             ->filter(fn ($s) => $s !== TaskStatus::Completed && $s !== TaskStatus::Cancelled)
             ->values();
@@ -60,7 +69,6 @@ class WeeklyPlanner extends Component
         $currentIndex = $statuses->search($task->status);
 
         if ($currentIndex === false) {
-            // Si está en un estado que no está en la lista (ej: Completed), vuelve al primero
             $nextStatus = $statuses->first();
         } else {
             $nextIndex = ($currentIndex + 1) % $statuses->count();
@@ -69,6 +77,7 @@ class WeeklyPlanner extends Component
 
         $task->update(['status' => $nextStatus]);
     }
+
     public function finishTask($taskId)
     {
         $task = Task::findOrFail($taskId);
@@ -104,35 +113,31 @@ class WeeklyPlanner extends Component
 
         if ($task->status === TaskStatus::Cancelled) {
             session()->flash('message', 'No se puede agregar tiempo a una tarea cancelada.');
-
             return;
         }
 
-        // Si hay una subtarea seleccionada, usar addTimeToSubtask
         if (! empty($this->selectedSubtask[$taskId])) {
             return $this->addTimeToSubtask($taskId);
         }
 
         $hours = (int) ($this->hoursInput[$taskId] ?? 0);
-        $mins = (int) ($this->minutesInput[$taskId] ?? 0);
+        $mins  = (int) ($this->minutesInput[$taskId] ?? 0);
         $minutes = ($hours * 60) + $mins;
 
         if ($minutes > 0) {
             TaskTimeLog::create([
-                'task_id' => $taskId,
+                'task_id'       => $taskId,
                 'minutes_spent' => $minutes,
-                'log_date' => now(),
+                'log_date'      => now(),
             ]);
 
             $this->minutesInput[$taskId] = '';
-            $this->hoursInput[$taskId] = '';
+            $this->hoursInput[$taskId]   = '';
 
-            // Verificar si llegamos al 100% para completar la tarea
             if ($task->progress >= 100 && $task->status !== TaskStatus::Completed) {
                 $task->update(['status' => TaskStatus::Completed]);
                 session()->flash('message', "¡Tarea completada! Se cargaron {$minutes} minutos.");
             } else {
-                // Auto cambiar a "En Curso" si está pendiente
                 if ($task->status === TaskStatus::Pending) {
                     $task->update(['status' => TaskStatus::InProgress]);
                 }
@@ -147,14 +152,13 @@ class WeeklyPlanner extends Component
 
         if ($task->status === TaskStatus::Cancelled) {
             session()->flash('message', 'No se puede agregar tiempo a una tarea cancelada.');
-
             return;
         }
 
         $subtaskId = $this->selectedSubtask[$taskId] ?? null;
-        $hours = (int) ($this->hoursInput[$taskId] ?? 0);
-        $mins = (int) ($this->minutesInput[$taskId] ?? 0);
-        $minutes = ($hours * 60) + $mins;
+        $hours     = (int) ($this->hoursInput[$taskId] ?? 0);
+        $mins      = (int) ($this->minutesInput[$taskId] ?? 0);
+        $minutes   = ($hours * 60) + $mins;
 
         if ($subtaskId && $minutes > 0) {
             $subtask = \App\Models\Subtask::find($subtaskId);
@@ -163,41 +167,31 @@ class WeeklyPlanner extends Component
                 $subtask->spent_minutes += $minutes;
                 $subtask->save();
 
-                // Verificar si llegamos al 100% para completar la tarea
                 if ($task->progress >= 100 && $task->status !== TaskStatus::Completed) {
                     $task->update(['status' => TaskStatus::Completed]);
-                    session()->flash('message', "¡Tarea completada! Se cargaron {$minutes} minutos a la subtarea '{$subtask->title}'.");
+                    session()->flash('message', "¡Tarea completada! Se cargaron {$minutes} minutos a '{$subtask->title}'.");
                 } else {
-                    // Auto cambiar a "En Curso" si está pendiente
                     if ($task->status === TaskStatus::Pending) {
                         $task->update(['status' => TaskStatus::InProgress]);
                     }
-                    session()->flash('message', "¡Se cargaron {$minutes} minutos a la subtarea '{$subtask->title}'!");
+                    session()->flash('message', "¡Se cargaron {$minutes} minutos a '{$subtask->title}'!");
                 }
 
-                // Limpiar inputs
-                $this->minutesInput[$taskId] = '';
-                $this->hoursInput[$taskId] = '';
+                $this->minutesInput[$taskId]   = '';
+                $this->hoursInput[$taskId]     = '';
                 $this->selectedSubtask[$taskId] = null;
             }
         }
     }
 
     protected $listeners = [
-        'taskSaved' => 'taskSaved',
-        'periodSaved' => '$refresh',
+        'taskSaved'      => 'taskSaved',
+        'periodSaved'    => '$refresh',
         'periodSelected' => 'selectPeriod',
-        'setActiveTab' => 'setActiveTab',
     ];
-
-    public function setActiveTab($tab)
-    {
-        $this->activeTab = $tab;
-    }
 
     public function taskSaved()
     {
-        // Asignar orden a tareas sin orden
         Task::whereNull('sort_order')->orWhere('sort_order', 0)->each(function ($task) {
             $maxOrder = Task::where('period_id', $task->period_id)->max('sort_order') ?? 0;
             $task->update(['sort_order' => $maxOrder + 1]);
@@ -215,19 +209,15 @@ class WeeklyPlanner extends Component
 
     public function moveTaskToPeriod($taskId, $newPeriodId)
     {
-        $task = Task::findOrFail($taskId);
+        $task        = Task::findOrFail($taskId);
         $oldPeriodId = $task->period_id;
+        $maxOrder    = Task::where('period_id', $newPeriodId)->max('sort_order') ?? 0;
 
-        // Obtener el orden máximo en la nueva semana
-        $maxOrder = Task::where('period_id', $newPeriodId)->max('sort_order') ?? 0;
-
-        // Mover la tarea
         $task->update([
-            'period_id' => $newPeriodId,
+            'period_id'  => $newPeriodId,
             'sort_order' => $maxOrder + 1,
         ]);
 
-        // Reordenar tareas en la semana original
         $this->reorderPeriodTasks($oldPeriodId);
     }
 
@@ -252,24 +242,20 @@ class WeeklyPlanner extends Component
     public function render()
     {
         $currentPeriod = null;
-        $tasks = collect();
+        $tasks         = collect();
 
         if ($this->selectedPeriodId) {
             $currentPeriod = Period::find($this->selectedPeriodId);
-
-            // Paginación de tareas (10 por página)
             $tasks = Task::where('period_id', $this->selectedPeriodId)
                 ->with('subtasks')
                 ->orderBy('sort_order', 'asc')
                 ->paginate(10);
         }
 
-        $periods = Period::where('user_id', auth()->id())->orderBy('start_date', 'desc')->get();
-
         return view('livewire.weekly-planner', [
-            'currentPeriod' => $currentPeriod,
-            'tasks' => $tasks,
-            'periods' => $periods,
+            'currentPeriod'    => $currentPeriod,
+            'tasks'            => $tasks,
+            'selectedPeriodId' => $this->selectedPeriodId,
         ]);
     }
 }

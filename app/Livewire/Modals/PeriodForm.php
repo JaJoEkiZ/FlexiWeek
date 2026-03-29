@@ -66,7 +66,9 @@ class PeriodForm extends Component
         // Check for overlaps and resolve automatically
         $this->resolveOverlaps();
 
-        $this->savePeriodChanges([
+        $isNew = is_null($this->periodId);
+
+        $period = $this->savePeriodChanges([
             'name' => $this->name,
             'start_date' => $this->startDate,
             'end_date' => $this->endDate,
@@ -74,6 +76,10 @@ class PeriodForm extends Component
 
         $this->close();
         session()->flash('message', 'Semana guardada correctamente.');
+
+        if ($isNew && $period) {
+            return $this->redirectRoute('planner', ['period' => $period->id], navigate: true);
+        }
     }
 
     public function resolveOverlaps()
@@ -134,10 +140,10 @@ class PeriodForm extends Component
 
             // Duplicar tareas persistentes en el nuevo período
             $this->duplicatePersistentTasks($period);
-
-            $this->dispatch('periodSaved'); // Refresh parent
         }
+        
         $this->dispatch('periodSaved');
+        return $period;
     }
 
     protected function duplicatePersistentTasks(Period $newPeriod)

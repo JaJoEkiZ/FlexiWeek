@@ -1,3 +1,9 @@
+<x-planner-layout
+    :selectedPeriodId="$selectedPeriodId"
+    :currentPeriod="isset($currentPeriod) ? $currentPeriod : null"
+    activeTab="metrics"
+>
+
 <div class="p-4 lg:p-8 space-y-6" wire:key="metrics-view">
 
     {{-- Selector de modo: Por Período / Por Rango --}}
@@ -18,11 +24,13 @@
         @if($mode === 'period')
             <div class="flex items-center gap-2">
                 <label class="text-xs text-[#7b7b7b]">Período:</label>
-                <select wire:model.live="selectedPeriodId"
+                <select wire:change="updatePeriod($event.target.value)"
                         class="px-3 py-2 text-sm bg-[#3c3c3c] border border-[#333] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] focus:outline-none">
                     <option value="">-- Seleccionar --</option>
                     @foreach($periods as $period)
-                        <option value="{{ $period->id }}">{{ $period->name }} ({{ \Carbon\Carbon::parse($period->start_date)->format('d/m') }} - {{ \Carbon\Carbon::parse($period->end_date)->format('d/m/Y') }})</option>
+                        <option value="{{ $period->id }}" {{ $selectedPeriodId == $period->id ? 'selected' : '' }}>
+                            {{ $period->name }} ({{ \Carbon\Carbon::parse($period->start_date)->format('d/m') }} - {{ \Carbon\Carbon::parse($period->end_date)->format('d/m/Y') }})
+                        </option>
                     @endforeach
                 </select>
             </div>
@@ -281,4 +289,6 @@
         })()
     </script>
     @endscript
+
 </div>
+</x-planner-layout>
