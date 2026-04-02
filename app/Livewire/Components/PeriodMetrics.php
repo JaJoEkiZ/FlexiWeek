@@ -140,7 +140,8 @@ class PeriodMetrics extends Component
 
         $avgTimePerTask = $total > 0 ? round($totalSpent / $total) : 0;
 
-        $completionRate = $total > 0 ? round(($completed / $total) * 100) : 0;
+        $activeTotal = $total - $cancelled;
+        $completionRate = $activeTotal > 0 ? round(($completed / $activeTotal) * 100) : 0;
 
         $totalSubtasks = $tasks->sum(fn ($t) => $t->subtasks->count());
         $completedSubtasks = $tasks->sum(fn ($t) => $t->subtasks->where('is_completed', true)->count());

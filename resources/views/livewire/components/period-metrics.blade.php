@@ -187,14 +187,48 @@
             {{-- Doughnut: Estado de tareas --}}
             <div class="bg-[#252526] border border-[#333] rounded-lg p-5">
                 <h3 class="text-xs text-[#7b7b7b] uppercase tracking-wider mb-4">Distribución de Estados</h3>
-                <div class="flex justify-center" style="height: 280px;">
-                    <canvas id="statusChart" wire:ignore></canvas>
+                <div class="flex items-center gap-4" style="height: 280px;">
+                    {{-- Leyenda izquierda con datos numéricos --}}
+                    <div class="flex flex-col gap-2.5 min-w-[140px] shrink-0">
+                        @php
+                            $statusItems = [
+                                ['label' => 'Completadas', 'value' => $metrics['completed'], 'color' => '#4ec9b0'],
+                                ['label' => 'Pendientes',  'value' => $metrics['pending'],   'color' => '#8b949e'],
+                                ['label' => 'En Curso',    'value' => $metrics['inProgress'],'color' => '#79c0ff'],
+                                ['label' => 'Pausadas',    'value' => $metrics['paused'],    'color' => '#d29922'],
+                                ['label' => 'Canceladas',  'value' => $metrics['cancelled'], 'color' => '#f85149'],
+                            ];
+                        @endphp
+                        @foreach($statusItems as $item)
+                            <div class="flex items-center gap-2 group" data-status-legend="{{ $loop->index }}">
+                                <span class="w-2.5 h-2.5 rounded-full shrink-0 transition-transform duration-200 group-hover:scale-125" style="background: {{ $item['color'] }}"></span>
+                                <span class="text-xs text-[#8b949e] group-hover:text-white transition-colors duration-200">{{ $item['label'] }}</span>
+                                <span class="text-xs font-mono font-semibold ml-auto transition-colors duration-200" style="color: {{ $item['color'] }}">{{ $item['value'] }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                    {{-- Gráfico doughnut --}}
+                    <div class="flex-1 h-full">
+                        <canvas id="statusChart" wire:ignore></canvas>
+                    </div>
                 </div>
             </div>
 
             {{-- Barras: Estimado vs Invertido --}}
-            <div class="bg-[#252526] border border-[#333] rounded-lg p-5">
-                <h3 class="text-xs text-[#7b7b7b] uppercase tracking-wider mb-4">Estimado vs Invertido (min)</h3>
+            <div class="bg-[#252526] border border-[#333] rounded-lg p-5"
+                 x-data="{ timeFormat: 'mm' }">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xs text-[#7b7b7b] uppercase tracking-wider"
+                        x-text="timeFormat === 'mm' ? 'Estimado vs Invertido (min)' : 'Estimado vs Invertido (hh:mm)'">Estimado vs Invertido (min)</h3>
+                    <div class="flex bg-[#1e1e1e] rounded border border-[#333] overflow-hidden">
+                        <button @click="timeFormat = 'mm'; $dispatch('time-format-changed', { format: 'mm' })"
+                                :class="timeFormat === 'mm' ? 'bg-[#007fd4] text-white' : 'text-[#8b949e] hover:text-white hover:bg-[#333]'"
+                                class="px-2.5 py-1 text-[10px] font-medium transition-all">mm</button>
+                        <button @click="timeFormat = 'hh:mm'; $dispatch('time-format-changed', { format: 'hh:mm' })"
+                                :class="timeFormat === 'hh:mm' ? 'bg-[#007fd4] text-white' : 'text-[#8b949e] hover:text-white hover:bg-[#333]'"
+                                class="px-2.5 py-1 text-[10px] font-medium transition-all">hh:mm</button>
+                    </div>
+                </div>
                 <div style="height: 280px;">
                     <canvas id="timeChart" wire:ignore></canvas>
                 </div>
@@ -216,12 +250,22 @@
         (() => {
             let statusChartInstance = null;
             let timeChartInstance = null;
+            let currentTimeFormat = 'mm';
+            let lastMetrics = null;
+
+            function minutesToHHMM(mins) {
+                const h = Math.floor(mins / 60);
+                const m = mins % 60;
+                return h > 0 ? h + ':' + String(m).padStart(2, '0') : '0:' + String(m).padStart(2, '0');
+            }
 
             function renderCharts(metrics) {
                 if (typeof Chart === 'undefined') return;
                 if (!metrics || !metrics.statusChart || !metrics.timeChart) return;
+                lastMetrics = metrics;
 
                 try {
+                    // --- Status doughnut chart ---
                     const statusCtx = document.getElementById('statusChart');
                     if (statusCtx && metrics.statusChart.data && metrics.statusChart.data.some(v => v > 0)) {
                         if (statusChartInstance) statusChartInstance.destroy();
@@ -243,47 +287,117 @@
                                 cutout: '60%',
                                 animation: { animateScale: true, animateRotate: true, duration: 800, easing: 'easeOutQuart' },
                                 plugins: {
-                                    legend: {
-                                        position: 'bottom',
-                                        labels: { color: '#8b949e', padding: 15, font: { size: 11 }, usePointStyle: true, pointStyleWidth: 10 }
+                                    legend: { display: false },
+                                    tooltip: {
+                                        callbacks: {
+                                            label: function(ctx) {
+                                                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                                const pct = total > 0 ? Math.round((ctx.parsed / total) * 100) : 0;
+                                                return ctx.label + ': ' + ctx.parsed + ' (' + pct + '%)';
+                                            }
+                                        }
                                     }
                                 }
                             }
                         });
                     }
 
-                    const timeCtx = document.getElementById('timeChart');
-                    if (timeCtx && metrics.timeChart.labels && metrics.timeChart.labels.length > 0) {
-                        if (timeChartInstance) timeChartInstance.destroy();
-                        timeChartInstance = new Chart(timeCtx, {
-                            type: 'bar',
-                            data: {
-                                labels: metrics.timeChart.labels.map(l => l.length > 15 ? l.substring(0, 15) + '...' : l),
-                                datasets: [
-                                    { label: 'Estimado', data: metrics.timeChart.estimated, backgroundColor: 'rgba(0, 127, 212, 0.6)', borderColor: '#007fd4', borderWidth: 1, borderRadius: 3 },
-                                    { label: 'Invertido', data: metrics.timeChart.spent, backgroundColor: 'rgba(78, 201, 176, 0.6)', borderColor: '#4ec9b0', borderWidth: 1, borderRadius: 3 }
-                                ]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                animation: { duration: 800, easing: 'easeOutQuart' },
-                                scales: {
-                                    x: { ticks: { color: '#7b7b7b', font: { size: 10 } }, grid: { color: 'rgba(51, 51, 51, 0.5)' } },
-                                    y: { ticks: { color: '#7b7b7b', font: { size: 10 } }, grid: { color: 'rgba(51, 51, 51, 0.5)' }, beginAtZero: true }
-                                },
-                                plugins: {
-                                    legend: {
-                                        labels: { color: '#8b949e', font: { size: 11 }, usePointStyle: true, pointStyleWidth: 10 }
-                                    }
-                                }
-                            }
-                        });
-                    }
+                    // --- Time bar chart ---
+                    renderTimeChart(metrics);
                 } catch (e) {
                     console.warn('Error rendering charts:', e);
                 }
             }
+
+            function renderTimeChart(metrics) {
+                if (!metrics || !metrics.timeChart) return;
+                const timeCtx = document.getElementById('timeChart');
+                if (!timeCtx || !metrics.timeChart.labels || metrics.timeChart.labels.length === 0) return;
+
+                if (timeChartInstance) timeChartInstance.destroy();
+
+                const isHHMM = currentTimeFormat === 'hh:mm';
+
+                // Custom plugin to render values on top of bars
+                const barValuePlugin = {
+                    id: 'barValueLabels',
+                    afterDatasetsDraw(chart) {
+                        const { ctx } = chart;
+                        chart.data.datasets.forEach((dataset, datasetIndex) => {
+                            const meta = chart.getDatasetMeta(datasetIndex);
+                            if (meta.hidden) return;
+                            meta.data.forEach((bar, index) => {
+                                const value = dataset.data[index];
+                                if (value === 0 || value === null || value === undefined) return;
+                                const formatted = isHHMM ? minutesToHHMM(value) : value;
+                                ctx.save();
+                                ctx.fillStyle = '#d4d4d4';
+                                ctx.font = 'bold 10px monospace';
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'bottom';
+                                const minY = chart.chartArea.top + 2;
+                                const labelY = Math.max(bar.y - 6, minY);
+                                ctx.fillText(formatted, bar.x, labelY);
+                                ctx.restore();
+                            });
+                        });
+                    }
+                };
+
+                // For hh:mm, we still chart raw minutes but format tick/tooltip labels
+                timeChartInstance = new Chart(timeCtx, {
+                    type: 'bar',
+                    plugins: [barValuePlugin],
+                    data: {
+                        labels: metrics.timeChart.labels.map(l => l.length > 15 ? l.substring(0, 15) + '...' : l),
+                        datasets: [
+                            { label: 'Estimado', data: metrics.timeChart.estimated, backgroundColor: 'rgba(0, 127, 212, 0.6)', borderColor: '#007fd4', borderWidth: 1, borderRadius: 3 },
+                            { label: 'Invertido', data: metrics.timeChart.spent, backgroundColor: 'rgba(78, 201, 176, 0.6)', borderColor: '#4ec9b0', borderWidth: 1, borderRadius: 3 }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: { padding: { top: 18 } },
+                        animation: { duration: 800, easing: 'easeOutQuart' },
+                        scales: {
+                            x: { ticks: { color: '#7b7b7b', font: { size: 10 } }, grid: { color: 'rgba(51, 51, 51, 0.5)' } },
+                            y: {
+                                ticks: {
+                                    color: '#7b7b7b',
+                                    font: { size: 10 },
+                                    callback: function(value) {
+                                        return isHHMM ? minutesToHHMM(value) : value;
+                                    }
+                                },
+                                grid: { color: 'rgba(51, 51, 51, 0.5)' },
+                                beginAtZero: true
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { color: '#8b949e', font: { size: 11 }, usePointStyle: true, pointStyleWidth: 10 }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(ctx) {
+                                        const val = ctx.parsed.y;
+                                        const formatted = isHHMM ? minutesToHHMM(val) : val + ' min';
+                                        return ctx.dataset.label + ': ' + formatted;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Listen for time format toggle
+            document.addEventListener('time-format-changed', (e) => {
+                currentTimeFormat = e.detail.format;
+                if (lastMetrics) renderTimeChart(lastMetrics);
+            });
 
             const initialMetrics = @json($metrics);
             $wire.on('metricsUpdated', (data) => {
