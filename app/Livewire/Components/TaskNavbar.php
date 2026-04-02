@@ -34,7 +34,7 @@ class TaskNavbar extends Component
 
     public function openTaskForm()
     {
-        $this->dispatch('openTaskForm', taskId: null, defaultPeriodId: $this->selectedPeriodId);
+        $this->dispatch('openTaskForm', ['taskId' => null, 'periodId' => $this->selectedPeriodId]);
     }
 
     public function render()

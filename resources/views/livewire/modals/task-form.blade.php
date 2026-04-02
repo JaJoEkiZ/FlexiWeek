@@ -1,6 +1,6 @@
 <div>
     @if($isOpen)
-        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div x-data="taskFormModal()" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
             <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
                 <!-- Overlay -->
                 <div class="fixed inset-0 bg-black bg-opacity-70 transition-opacity backdrop-filter backdrop-blur-sm" aria-hidden="true" wire:click="close"></div>
@@ -9,7 +9,7 @@
 
                 <!-- Modal Panel -->
                 <div class="inline-block align-bottom bg-[#252526] rounded text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-[#333]" wire:keydown.window.escape="close">
-                    <form wire:submit.prevent="save">
+                    <form @submit.prevent="save">
                         <div class="bg-[#252526] px-4 pt-5 pb-4 sm:p-6">
                             <div>
                                 <h3 class="text-lg leading-6 font-medium text-[#d4d4d4] mb-4 flex items-center gap-2" id="modal-title">
@@ -18,7 +18,7 @@
                                 <div class="space-y-4">
                                     <div>
                                         <label for="period" class="block text-xs font-mono text-[#7b7b7b] mb-1">Semana</label>
-                                        <select wire:model="periodId" id="period" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3">
+                                        <select x-model="draftTask.periodId" id="period" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3">
                                             @foreach($periods as $period)
                                                 <option value="{{ $period->id }}">{{ $period->name }}</option>
                                             @endforeach
@@ -28,19 +28,19 @@
 
                                     <div>
                                         <label for="title" class="block text-xs font-mono text-[#7b7b7b] mb-1">Nombre de la tarea</label>
-                                        <input type="text" wire:model="title" x-on:keydown.enter.prevent="$wire.save()" id="title" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3 placeholder-[#666]">
+                                        <input type="text" x-model.lazy="draftTask.title" x-on:keydown.enter.prevent="save()" id="title" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3 placeholder-[#666]">
                                         @error('title') <span class="text-[#f14c4c] text-xs font-mono mt-1">{{ $message }}</span> @enderror
                                     </div>
 
                                     <div>
                                         <label for="description" class="block text-xs font-mono text-[#7b7b7b] mb-1">Descripción / Detalles</label>
-                                        <textarea wire:model="description" id="description" rows="3" placeholder="Notas, detalles, contexto..." class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3 placeholder-[#666] resize-none"></textarea>
+                                        <textarea x-model.lazy="draftTask.description" id="description" rows="3" placeholder="Notas, detalles, contexto..." class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3 placeholder-[#666] resize-none"></textarea>
                                         @error('description') <span class="text-[#f14c4c] text-xs font-mono mt-1">{{ $message }}</span> @enderror
                                     </div>
 
                                     <div>
                                         <label for="completionMethod" class="block text-xs font-mono text-[#7b7b7b] mb-1">Tipo de Tarea</label>
-                                        <select wire:model.live="completionMethod" id="completionMethod" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3">
+                                        <select x-model="draftTask.completionMethod" id="completionMethod" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3">
                                             <option value="time">Por Tiempo</option>
                                             <option value="subtasks">Por Subtareas</option>
                                         </select>
@@ -49,51 +49,53 @@
 
                                     <div>
                                         <label class="flex items-center gap-2 cursor-pointer">
-                                            <input type="checkbox" wire:model="isPersistent" class="rounded bg-[#3c3c3c] border-[#333] text-[#007fd4] focus:ring-0 focus:ring-offset-0">
+                                            <input type="checkbox" x-model="draftTask.isPersistent" class="rounded bg-[#3c3c3c] border-[#333] text-[#007fd4] focus:ring-0 focus:ring-offset-0">
                                             <span class="text-sm text-[#d4d4d4] flex items-center gap-1">🔁 Tarea Persistente</span>
                                         </label>
                                         <p class="text-[10px] text-[#5a5a5a] mt-1 ml-6">Se duplicará automáticamente en cada nueva semana. Al desactivarla, deja de replicarse.</p>
                                     </div>
 
-                                    @if($completionMethod === 'time')
-                                    <div class="grid grid-cols-2 gap-4">
+                                    <template x-if="draftTask.completionMethod === 'time'">
                                         <div>
-                                            <label for="hours" class="block text-xs font-mono text-[#7b7b7b] mb-1">Horas</label>
-                                            <input type="number" 
-                                                   wire:model="hours" 
-                                                   x-on:keydown.enter.prevent="$wire.save()" 
-                                                   x-on:focus="$el.select()"
-                                                   id="hours" 
-                                                   min="0" 
-                                                   pattern="[0-9]*"
-                                                   inputmode="numeric"
-                                                   class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3 placeholder-[#666]">
-                                            @error('hours') <span class="text-[#f14c4c] text-xs font-mono mt-1">{{ $message }}</span> @enderror
+                                            <div class="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label for="hours" class="block text-xs font-mono text-[#7b7b7b] mb-1">Horas</label>
+                                                    <input type="number" 
+                                                           x-model.lazy="draftTask.hours" 
+                                                           x-on:keydown.enter.prevent="save()" 
+                                                           x-on:focus="$el.select()"
+                                                           id="hours" 
+                                                           min="0" 
+                                                           pattern="[0-9]*"
+                                                           inputmode="numeric"
+                                                           class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3 placeholder-[#666]">
+                                                    @error('hours') <span class="text-[#f14c4c] text-xs font-mono mt-1 block">{{ $message }}</span> @enderror
+                                                </div>
+                                                <div>
+                                                    <label for="minutes" class="block text-xs font-mono text-[#7b7b7b] mb-1">Minutos</label>
+                                                    <input type="number" 
+                                                           x-model.lazy="draftTask.minutes" 
+                                                           x-on:keydown.enter.prevent="save()" 
+                                                           x-on:focus="$el.select()"
+                                                           id="minutes" 
+                                                           min="0" 
+                                                           max="59"
+                                                           pattern="[0-9]*"
+                                                           inputmode="numeric"
+                                                           class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3 placeholder-[#666]">
+                                                    @error('minutes') <span class="text-[#f14c4c] text-xs font-mono mt-1 block">{{ $message }}</span> @enderror
+                                                </div>
+                                            </div>
+                                            <div class="text-xs text-[#7b7b7b] mt-1">
+                                                <span class="text-[#f14c4c]">*</span> Mínimo 10 minutos requeridos
+                                            </div>
                                         </div>
-                                        <div>
-                                            <label for="minutes" class="block text-xs font-mono text-[#7b7b7b] mb-1">Minutos</label>
-                                            <input type="number" 
-                                                   wire:model="minutes" 
-                                                   x-on:keydown.enter.prevent="$wire.save()" 
-                                                   x-on:focus="$el.select()"
-                                                   id="minutes" 
-                                                   min="0" 
-                                                   max="59"
-                                                   pattern="[0-9]*"
-                                                   inputmode="numeric"
-                                                   class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3 placeholder-[#666]">
-                                            @error('minutes') <span class="text-[#f14c4c] text-xs font-mono mt-1">{{ $message }}</span> @enderror
-                                        </div>
-                                    </div>
-                                    <div class="text-xs text-[#7b7b7b] -mt-2">
-                                        <span class="text-[#f14c4c]">*</span> Mínimo 10 minutos requeridos
-                                    </div>
-                                    @endif
+                                    </template>
 
                                     <div class="space-y-2">
-                                        <label class="block text-xs font-mono text-[#7b7b7b] mb-1">Subtareas @if($completionMethod === 'subtasks')<span class="text-[#f14c4c]">*</span>@endif</label>
+                                        <label class="block text-xs font-mono text-[#7b7b7b] mb-1">Subtareas <template x-if="draftTask.completionMethod === 'subtasks'"><span class="text-[#f14c4c]">*</span></template></label>
                                         
-                                        @if($completionMethod === 'subtasks' && empty($subtasks))
+                                        <template x-if="draftTask.completionMethod === 'subtasks' && draftTask.subtasks.length === 0">
                                             <div class="p-3 bg-[#2d2d2d] rounded border border-[#f14c4c]/30 text-xs text-[#f14c4c]">
                                                 <p class="flex items-start gap-2">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mt-0.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
@@ -104,36 +106,34 @@
                                                     </span>
                                                 </p>
                                             </div>
-                                        @endif
+                                        </template>
                                         
-                                        @foreach($subtasks as $index => $subtask)
+                                        <template x-for="(subtask, index) in draftTask.subtasks" :key="subtask.id || subtask._cid || index">
                                             <div class="space-y-2 p-2 bg-[#2d2d2d] rounded border border-[#3c3c3c]">
                                                 <div class="flex gap-2 items-center">
-                                                    <input type="checkbox" wire:model="subtasks.{{ $index }}.is_completed" class="rounded bg-[#3c3c3c] border-[#333] text-[#007fd4] focus:ring-0 focus:ring-offset-0">
-                                                    <input type="text" wire:model="subtasks.{{ $index }}.title" placeholder="Título de la subtarea" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3 placeholder-[#666]">
-                                                    <button type="button" wire:click="removeSubtask({{ $index }})" class="text-[#f14c4c] hover:text-[#c43e3e]">
+                                                    <input type="checkbox" x-model="subtask.is_completed" class="rounded bg-[#3c3c3c] border-[#333] text-[#007fd4] focus:ring-0 focus:ring-offset-0">
+                                                    <input type="text" x-model.lazy="subtask.title" placeholder="Título de la subtarea" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3 placeholder-[#666]">
+                                                    <button type="button" @click="removeSubtask(index)" class="text-[#f14c4c] hover:text-[#c43e3e]">
                                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                                           <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
                                                         </svg>
                                                     </button>
                                                 </div>
-                                                <input type="text" wire:model="subtasks.{{ $index }}.description" placeholder="Detalles de la subtarea (opcional)" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#9d9d9d] focus:border-[#007fd4] focus:ring-[#007fd4] text-xs py-1.5 px-3 placeholder-[#555]">
+                                                <input type="text" x-model.lazy="subtask.description" placeholder="Detalles de la subtarea (opcional)" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#9d9d9d] focus:border-[#007fd4] focus:ring-[#007fd4] text-xs py-1.5 px-3 placeholder-[#555]">
                                                 
                                                 {{-- Time Field: Tiempo Estimado --}}
                                                 <div class="flex items-center gap-2 mt-2">
                                                     <label class="text-xs font-mono text-[#5a5a5a]">⏱ Estimado:</label>
                                                     <div class="flex gap-1 items-center">
-                                                        <input type="number" wire:model="subtasks.{{ $index }}.estimated_hours" min="0" placeholder="0" class="w-12 rounded bg-[#3c3c3c] border-[#333] text-[#9d9d9d] focus:border-[#007fd4] focus:ring-[#007fd4] text-xs py-1 px-2 placeholder-[#555]">
+                                                        <input type="number" x-model.lazy="subtask.estimated_hours" min="0" placeholder="0" class="w-12 rounded bg-[#3c3c3c] border-[#333] text-[#9d9d9d] focus:border-[#007fd4] focus:ring-[#007fd4] text-xs py-1 px-2 placeholder-[#555]">
                                                         <span class="text-[#5a5a5a] text-xs">h</span>
-                                                        <input type="number" wire:model="subtasks.{{ $index }}.estimated_minutes" min="0" max="59" placeholder="0" class="w-12 rounded bg-[#3c3c3c] border-[#333] text-[#9d9d9d] focus:border-[#007fd4] focus:ring-[#007fd4] text-xs py-1 px-2 placeholder-[#555]">
+                                                        <input type="number" x-model.lazy="subtask.estimated_minutes" min="0" max="59" placeholder="0" class="w-12 rounded bg-[#3c3c3c] border-[#333] text-[#9d9d9d] focus:border-[#007fd4] focus:ring-[#007fd4] text-xs py-1 px-2 placeholder-[#555]">
                                                         <span class="text-[#5a5a5a] text-xs">m</span>
                                                     </div>
                                                 </div>
-                                                
-                                                @error('subtasks.'.$index.'.title') <span class="text-[#f14c4c] text-xs font-mono mt-1">{{ $message }}</span> @enderror
                                             </div>
-                                        @endforeach
-                                        <button type="button" wire:click="addSubtask" class="text-xs text-[#007fd4] hover:underline flex items-center gap-1">
+                                        </template>
+                                        <button type="button" @click="addSubtask()" class="text-xs text-[#007fd4] hover:underline flex items-center gap-1">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                                                 <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
                                             </svg>
@@ -157,4 +157,36 @@
             </div>
         </div>
     @endif
+
+    @script
+    <script>
+        Alpine.data('taskFormModal', () => ({
+            draftTask: {
+                id: $wire.taskId,
+                title: $wire.title || '',
+                description: $wire.description || '',
+                periodId: $wire.periodId,
+                hours: $wire.hours || 0,
+                minutes: $wire.minutes || 0,
+                completionMethod: $wire.completionMethod || 'time',
+                isPersistent: $wire.isPersistent || false,
+                subtasks: JSON.parse(JSON.stringify($wire.subtasks || []))
+            },
+            addSubtask() {
+                this.draftTask.subtasks.push({
+                    _cid: Date.now() + Math.random(),
+                    title: '', description: '', is_completed: false,
+                    estimated_hours: 0, estimated_minutes: 0,
+                    spent_hours: 0, spent_minutes: 0
+                });
+            },
+            removeSubtask(index) {
+                this.draftTask.subtasks.splice(index, 1);
+            },
+            save() {
+                $wire.saveTask(this.draftTask);
+            }
+        }));
+    </script>
+    @endscript
 </div>

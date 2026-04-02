@@ -1,3 +1,9 @@
+<x-planner-layout
+    :selectedPeriodId="null"
+    :currentPeriod="isset($currentPeriod) ? $currentPeriod : null"
+    activeTab="board"
+>
+
 <div
     x-data="pizarra(@js($items))"
     x-init="init()"
@@ -19,6 +25,11 @@
         .pizarra-root.is-selecting { cursor: crosshair !important; }
         .pizarra-root.is-selecting * { cursor: crosshair !important; }
         .pizarra-root *, .pizarra-root *::before, .pizarra-root *::after { box-sizing: border-box; }
+
+        .pizarra-root .pz-item.pz-group {
+            border-radius: 0; /* Esquinas a 90 grados */
+            border-width: 2px; /* Borde más grueso para resaltar */
+        }
 
         /* CANVAS */
         .pizarra-root #pizarra-canvas {
@@ -321,9 +332,10 @@
         id="pz-items-layer"
     >
         <template x-for="item in items" :key="item.id">
-            <div
+            <div x-show="!item.parent_id"
                 class="pz-item"
                 :class="{
+                    'pz-group': item.is_group,
                     'selected': selectedId === item.id && selectedIds.length === 0,
                     'multi-selected': selectedIds.includes(item.id),
                     'connecting-source': connectSource && connectSource.id === item.id
@@ -355,15 +367,31 @@
 
                 {{-- Body --}}
                 <div class="pz-item-body" :style="{ fontSize: Math.max(9, 11 * scale) + 'px' }">
-                    <div class="pz-item-notes" x-show="item.notes" x-text="item.notes"></div>
-                    <template x-for="st in (item.subtasks || [])" :key="st.id">
-                        <div class="pz-subtask" :class="{ done: st.is_completed }">
-                            <input type="checkbox" :checked="st.is_completed"
-                                @change.stop="$wire.toggleSubtask(st.id).then(() => $wire.loadItems().then(d => items = d))"
-                            />
-                            <span x-text="st.title"></span>
-                        </div>
-                    </template>
+                <!-- SI ES UNA CAJA NORMAL (Muestra notas y subtareas checkeables) -->
+                   <template x-if="!item.is_group">
+                       <div>
+                           <div class="pz-item-notes" x-show="item.notes" x-text="item.notes"></div>
+                           <template x-for="st in (item.subtasks || [])" :key="st.id">
+                               <div class="pz-subtask" :class="{ done: st.is_completed }">
+                                   <input type="checkbox" :checked="st.is_completed"
+                                       @change.stop="$wire.toggleSubtask(st.id).then(() => $wire.loadItems().then(d => items = d))"
+                                   />
+                                   <span x-text="st.title"></span>
+                               </div>
+                           </template>
+                       </div>
+                   </template>
+                   <!-- SI ES UN GRUPO (Muestra la lista de las cajas/ideas hijas como renglones) -->
+                   <template x-if="item.is_group">
+                       <div class="flex flex-col gap-1 mt-1">
+                           <template x-for="child in (item.children || [])" :key="child.id">
+                               <div class="flex items-center gap-2 text-[#b5cea8]">
+                                   <span class="text-[8px]">▶</span>
+                                   <span class="font-medium whitespace-nowrap overflow-hidden text-ellipsis" x-text="child.title"></span>
+                               </div>
+                           </template>
+                       </div>
+                   </template>
                 </div>
             </div>
         </template>
@@ -421,27 +449,53 @@
                         </div>
                     </div>
 
-                    {{-- Subtareas --}}
+                    {{-- Subtareas o Ideas --}}
                     <div class="pz-field">
-                        <label>Subtareas</label>
-                        <div class="pz-subtasks-list">
-                            <template x-for="st in (editItem.subtasks || [])" :key="st.id">
-                                <div class="pz-subtask-row" :class="{ done: st.is_completed }">
-                                    <input type="checkbox" :checked="st.is_completed"
-                                        @change="toggleSubtaskPanel(st)"
-                                    />
-                                    <span x-text="st.title"></span>
-                                    <button class="pz-subtask-del" @click="deleteSubtaskPanel(st.id)">✕</button>
+                        <label x-text="editItem.is_group ? 'Ideas del Grupo' : 'Subtareas'"></label>
+                        
+                        <template x-if="!editItem.is_group">
+                            <div>
+                                <div class="pz-subtasks-list">
+                                    <template x-for="st in (editItem.subtasks || [])" :key="st.id">
+                                        <div class="pz-subtask-row" :class="{ done: st.is_completed }">
+                                            <input type="checkbox" :checked="st.is_completed"
+                                                @change="toggleSubtaskPanel(st)"
+                                            />
+                                            <span x-text="st.title"></span>
+                                            <button class="pz-subtask-del" title="Eliminar subtarea" @click="deleteSubtaskPanel(st.id)">✕</button>
+                                        </div>
+                                    </template>
                                 </div>
-                            </template>
-                        </div>
-                        <div class="pz-add-subtask">
-                            <input type="text" x-model="newSubtaskTitle"
-                                placeholder="Nueva subtarea..."
-                                @keydown.enter="addSubtaskPanel()"
-                            />
-                            <button @click="addSubtaskPanel()">＋</button>
-                        </div>
+                                <div class="pz-add-subtask">
+                                    <input type="text" x-model="newSubtaskTitle"
+                                        placeholder="Nueva subtarea..."
+                                        @keydown.enter="addSubtaskPanel()"
+                                    />
+                                    <button @click="addSubtaskPanel()">＋</button>
+                                </div>
+                            </div>
+                        </template>
+
+                        <template x-if="editItem.is_group">
+                            <div>
+                                <div class="pz-subtasks-list">
+                                    <template x-for="child in (editItem.children || [])" :key="child.id">
+                                        <div class="pz-subtask-row">
+                                            <span style="margin-left:4px; font-size:9px; color:#555">▶</span>
+                                            <span x-text="child.title"></span>
+                                            <button class="pz-subtask-del" title="Extraer de este grupo" @click="extractChildPanel(child.id)">✕</button>
+                                        </div>
+                                    </template>
+                                </div>
+                                <div class="pz-add-subtask">
+                                    <input type="text" x-model="newSubtaskTitle"
+                                        placeholder="Nueva idea..."
+                                        @keydown.enter="addChildPanel()"
+                                    />
+                                    <button @click="addChildPanel()">＋</button>
+                                </div>
+                            </div>
+                        </template>
                     </div>
                     {{-- Guardar --}}
                     <button class="pz-save-btn" @click.stop="saveAllPanelFields()">
@@ -486,6 +540,13 @@
                         <div class="pz-context-item" @click="startConnect(contextMenu.target); contextMenu.visible=false">
                             ⟶ Conectar
                         </div>
+                        
+                        <template x-if="contextMenu.target && contextMenu.target.is_group">
+                            <div class="pz-context-item border-b border-[#333]" @click="$wire.ungroupItems(contextMenu.target.id).then(() => { selectedIds=[]; reload(); }); contextMenu.visible=false">
+                                📦 Desagrupar
+                            </div>
+                        </template>
+
                         <div class="pz-context-sep"></div>
                     </div>
                 </template>
@@ -494,6 +555,16 @@
                         <div class="pz-context-item" style="color:#4ec9b0; font-size:10px; padding:4px 10px; cursor:default;">
                             <span x-text="selectedIds.length + ' cajas seleccionadas'"></span>
                         </div>
+                        
+                        <div class="pz-context-item" @click="
+                            groupModal.title = 'Nuevo Grupo';
+                            groupModal.visible = true;
+                            contextMenu.visible = false;
+                            setTimeout(() => { $refs.groupInput && $refs.groupInput.select() }, 50);
+                        ">
+                            📦 Crear Grupo (Contenedor)
+                        </div>
+
                         <div class="pz-context-sep"></div>
                     </div>
                 </template>
@@ -570,6 +641,74 @@
         </div>
     </div>
 
+    {{-- ═══════════════════════════════════════════
+         MODAL CREAR GRUPO
+    ═══════════════════════════════════════════ --}}
+    <div x-show="groupModal.visible" x-cloak class="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4">
+        <div class="bg-[#252526] border border-[#333] rounded-lg shadow-2xl w-full max-w-sm overflow-hidden" @click.outside="groupModal.visible = false">
+            <div class="px-4 py-3 border-b border-[#333] flex justify-between items-center">
+                <h3 class="text-[#d4d4d4] font-medium text-sm">Crear Grupo</h3>
+                <button @click="groupModal.visible = false" class="text-[#7b7b7b] hover:text-white">✕</button>
+            </div>
+            <div class="p-4 custom-scrollbar">
+                <label class="block text-xs text-[#7b7b7b] uppercase tracking-wider mb-2">Nombre del Grupo</label>
+                <input type="text" x-model="groupModal.title" class="w-full bg-[#3c3c3c] border border-[#333] rounded-md text-[#d4d4d4] text-xs p-2 outline-none focus:border-[#007fd4] transition-colors"
+                @keydown.enter="$wire.groupItems(selectedIds, groupModal.title).then(() => { selectedIds=[]; groupModal.visible=false; reload(); })" x-ref="groupInput" />
+                <div class="mt-4 flex justify-end gap-2">
+                    <button @click="groupModal.visible = false" class="px-3 py-1.5 text-xs text-[#d4d4d4] hover:bg-[#333] rounded transition-colors">Cancelar</button>
+                    <button @click="$wire.groupItems(selectedIds, groupModal.title).then(() => { selectedIds=[]; groupModal.visible=false; reload(); })" class="px-3 py-1.5 text-xs bg-[rgba(0,127,212,0.15)] text-[#007fd4] hover:bg-[rgba(0,127,212,0.3)] rounded transition-colors">Crear</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ═══════════════════════════════════════════
+         MODAL PROMOVER GRUPO (SELECCIÓN DE HIJOS)
+    ═══════════════════════════════════════════ --}}
+    <div x-show="groupPromoteModal.visible" x-cloak class="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4">
+        <div class="bg-[#252526] border border-[#333] rounded-lg shadow-2xl w-full max-w-sm overflow-hidden" @click.outside="groupPromoteModal.visible = false">
+            <div class="px-4 py-3 border-b border-[#333] flex justify-between items-center">
+                <h3 class="text-[#d4d4d4] font-medium text-sm">Transferir a Semana</h3>
+                <button @click="groupPromoteModal.visible = false" class="text-[#7b7b7b] hover:text-white">✕</button>
+            </div>
+            <div class="p-4 custom-scrollbar max-h-[80vh] overflow-y-auto">
+                <p class="text-xs text-[#7b7b7b] mb-4">Seleccioná qué ideas de <strong class="text-[#d4d4d4]" x-text="groupPromoteModal.targetGroup?.title"></strong> pasar a la semana.</p>
+                
+                <div class="mb-3 pb-2 border-b border-[#333]">
+                    <label class="flex items-center gap-2 text-[#d4d4d4] text-xs cursor-pointer hover:bg-[#333] p-1 rounded transition-colors">
+                        <input type="checkbox" x-model="groupPromoteModal.selectAll" @change="
+                            if (groupPromoteModal.selectAll) {
+                                groupPromoteModal.selectedChildIds = groupPromoteModal.children.map(c => c.id);
+                            } else {
+                                groupPromoteModal.selectedChildIds = [];
+                            }
+                        " class="accent-[#007fd4]">
+                        <span class="font-medium">Agregar Todo</span>
+                    </label>
+                </div>
+                
+                <div class="flex flex-col gap-1">
+                    <template x-for="child in groupPromoteModal.children" :key="child.id">
+                        <label class="flex items-center gap-2 text-[#b5cea8] text-xs cursor-pointer hover:bg-[#333] p-1.5 rounded transition-colors">
+                            <input type="checkbox" :value="child.id" x-model="groupPromoteModal.selectedChildIds" @change="
+                                groupPromoteModal.selectAll = groupPromoteModal.selectedChildIds.length === groupPromoteModal.children.length;
+                            " class="accent-[#007fd4]">
+                            <span class="truncate" x-text="child.title"></span>
+                        </label>
+                    </template>
+                </div>
+
+                <div class="mt-5 flex justify-end gap-2">
+                    <button @click="groupPromoteModal.visible = false" class="px-3 py-1.5 text-xs text-[#d4d4d4] hover:bg-[#333] rounded transition-colors">Cancelar</button>
+                    <button @click="
+                        $wire.promoteToTask(groupPromoteModal.targetGroup.id, groupPromoteModal.targetPeriodId, [], groupPromoteModal.selectedChildIds)
+                            .then(() => { groupPromoteModal.visible = false; reload(); })
+                    " class="px-3 py-1.5 text-xs bg-[rgba(0,127,212,0.15)] text-[#007fd4] hover:bg-[rgba(0,127,212,0.3)] rounded transition-colors" :disabled="groupPromoteModal.selectedChildIds.length === 0">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- HINT --}}
     <div class="pz-hint">doble click para crear · click derecho para opciones · click scroll para moverse · scroll para zoom</div>
 
@@ -611,6 +750,12 @@
 
         // Modal de periodos
         periodModal: { visible: false, targetItem: null, periods: [], loading: false },
+        
+        // Modal de grupo
+        groupModal: { visible: false, title: '' },
+
+        // Modal de promover grupo (selección de hijas)
+        groupPromoteModal: { visible: false, targetGroup: null, targetPeriodId: null, children: [], selectedChildIds: [], selectAll: true },
 
         // UX Drag
         currentDropZone: null,
@@ -635,6 +780,8 @@
                     this.tempLine = null;
                     this.contextMenu.visible = false;
                     this.periodModal.visible = false;
+                    this.groupModal.visible = false;
+                    this.groupPromoteModal.visible = false;
                     this.clearSelection();
                     if (this.panelOpen) {
                         this.closePanel();
@@ -663,10 +810,27 @@
         get allConnections() {
             const conns = [];
             this.items.forEach(item => {
-                (item.connections_from || []).forEach(c => conns.push(c));
+                (item.connections_from || []).forEach(c => {
+                    // Evaluamos si el Origen o Destino real está metido adentro de un grupo.
+                    // Si lo está, la flecha tiene que salir/entrar desde el ID del Padre visible.
+                    
+                    const realFrom = this.items.find(i => i.id === c.from_item_id);
+                    const realTo = this.items.find(i => i.id === c.to_item_id);
+                
+                    const displayFromId = (realFrom && realFrom.parent_id) ? realFrom.parent_id : c.from_item_id;
+                    const displayToId = (realTo && realTo.parent_id) ? realTo.parent_id : c.to_item_id;
+                
+                    // Pusheamos una copia manipulada para el dibujante de flechas
+                    conns.push({
+                        ...c,
+                        display_from_id: displayFromId,
+                        display_to_id: displayToId
+                    });
+                });
             });
             return conns;
         },
+
 
         // ─── RENDER CONEXIONES (programático, Alpine x-for no funciona en SVG) ────
         renderConnections() {
@@ -683,7 +847,7 @@
                 if (!pathD) return;
 
                 // Color de la caja origen
-                const fromItem = this.items.find(i => i.id == conn.from_item_id);
+                const fromItem = this.items.find(i => i.id == (conn.display_from_id || conn.from_item_id));
                 const color = fromItem ? fromItem.color : '#007fd4';
 
                 // Hitbox invisible (más ancho para facilitar click derecho)
@@ -850,9 +1014,18 @@
                 if (dropZone) {
                     const periodId = dropZone.getAttribute('data-period-id');
                     if (periodId) {
-                        this.$wire.promoteToTask(this.dragging.id, periodId).then(() => {
-                            this.reload();
-                        });
+                        if (this.dragging.is_group) {
+                            this.groupPromoteModal.targetGroup = this.dragging;
+                            this.groupPromoteModal.targetPeriodId = periodId;
+                            this.groupPromoteModal.children = this.dragging.children || [];
+                            this.groupPromoteModal.selectedChildIds = this.groupPromoteModal.children.map(c => c.id);
+                            this.groupPromoteModal.selectAll = true;
+                            this.groupPromoteModal.visible = true;
+                        } else {
+                            this.$wire.promoteToTask(this.dragging.id, periodId).then(() => {
+                                this.reload();
+                            });
+                        }
                     }
                 } else {
                     this.savePosition(this.dragging);
@@ -1024,10 +1197,19 @@
 
         promoteToPeriod(periodId) {
             if (!this.periodModal.targetItem) return;
-            const itemId = this.periodModal.targetItem.id;
+            const item = this.periodModal.targetItem;
             this.periodModal.visible = false;
-            // Al promover, se recargará automáticamente la Pizarra en el backend
-            this.$wire.promoteToTask(itemId, periodId);
+            
+            if (item.is_group) {
+                this.groupPromoteModal.targetGroup = item;
+                this.groupPromoteModal.targetPeriodId = periodId;
+                this.groupPromoteModal.children = item.children || [];
+                this.groupPromoteModal.selectedChildIds = this.groupPromoteModal.children.map(c => c.id);
+                this.groupPromoteModal.selectAll = true;
+                this.groupPromoteModal.visible = true;
+            } else {
+                this.$wire.promoteToTask(item.id, periodId).then(() => this.reload());
+            }
         },
 
         // ─── PANEL ───────────────────────────────
@@ -1104,6 +1286,26 @@
             });
         },
 
+        addChildPanel() {
+            if (!this.newSubtaskTitle.trim()) return;
+            this.$wire.addChildToGroup(this.editItem.id, this.newSubtaskTitle).then(() => {
+                this.newSubtaskTitle = '';
+                this.reload().then(() => {
+                    const updated = this.items.find(i => i.id === this.editItem.id);
+                    if (updated) this.editItem = JSON.parse(JSON.stringify(updated));
+                });
+            });
+        },
+
+        extractChildPanel(childId) {
+            this.$wire.extractFromGroup(childId).then(() => {
+                this.reload().then(() => {
+                    const updated = this.items.find(i => i.id === this.editItem.id);
+                    if (updated) this.editItem = JSON.parse(JSON.stringify(updated));
+                });
+            });
+        },
+
         deleteItemPanel() {
             this.$wire.deleteItem(this.editItem.id).then(() => {
                 this.closePanel();
@@ -1135,8 +1337,8 @@
         },
 
         getConnectionPath(conn) {
-            const from = this.items.find(i => i.id == conn.from_item_id);
-            const to   = this.items.find(i => i.id == conn.to_item_id);
+            const from = this.items.find(i => i.id == (conn.display_from_id || conn.from_item_id));
+            const to   = this.items.find(i => i.id == (conn.display_to_id || conn.to_item_id));
             if (!from || !to) return '';
             const fx = parseFloat(from.pos_x), fy = parseFloat(from.pos_y);
             const fw = parseFloat(from.width), fh = parseFloat(from.height);
@@ -1182,8 +1384,8 @@
         },
 
         getConnectionEndpoint(conn) {
-            const from = this.items.find(i => i.id == conn.from_item_id);
-            const to   = this.items.find(i => i.id == conn.to_item_id);
+            const from = this.items.find(i => i.id == (conn.display_from_id || conn.from_item_id));
+            const to   = this.items.find(i => i.id == (conn.display_to_id || conn.to_item_id));
             if (!from || !to) return null;
             const tx = parseFloat(to.pos_x), ty = parseFloat(to.pos_y);
             const tw = parseFloat(to.width), th = parseFloat(to.height);
@@ -1261,3 +1463,4 @@
     @endscript
 
 </div>
+</x-planner-layout>
