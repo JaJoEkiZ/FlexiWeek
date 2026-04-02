@@ -143,18 +143,23 @@ class WeeklyPlanner extends Component
         $this->dispatch('$refresh');
     }
 
-    #[Renderless]
     public function toggleSubtask($taskId, $subtaskId)
     {
+        $task = Task::findOrFail($taskId);
+
+        // Security check: ensure task belongs to the user
+        if ($task->period->user_id !== auth()->id()) {
+            return;
+        }
+
         $subtask = \App\Models\Subtask::find($subtaskId);
         if ($subtask && $subtask->task_id == $taskId) {
-            $subtask->update(['is_completed' => !$subtask->is_completed]);
+            $subtask->update(['is_completed' => ! $subtask->is_completed]);
 
-            $task = Task::findOrFail($taskId);
-            $total = $task->subtasks()->count();
+            $total     = $task->subtasks()->count();
             $completed = $task->subtasks()->where('is_completed', true)->count();
 
-            if ($total === $completed) {
+            if ($total === $completed && $total > 0) {
                 $task->update(['status' => TaskStatus::Completed]);
                 $this->dispatch('toast', message: '¡Todas las subtareas completadas!', type: 'success');
             } else {
@@ -162,6 +167,8 @@ class WeeklyPlanner extends Component
                     $task->update(['status' => TaskStatus::InProgress]);
                 }
             }
+
+            $task->touch(); // Force updated_at change for wire:key
         }
     }
 
@@ -199,6 +206,8 @@ class WeeklyPlanner extends Component
                 }
                 $this->dispatch('toast', message: "¡Se cargaron {$minutes} minutos!", type: 'success');
             }
+
+            $task->touch(); // Ensure wire:key changes
         }
     }
 
@@ -232,6 +241,8 @@ class WeeklyPlanner extends Component
                     }
                     $this->dispatch('toast', message: "¡Se cargaron {$minutes} minutos a '{$subtask->title}'!", type: 'success');
                 }
+
+                $task->touch(); // Ensure wire:key changes
             }
         }
     }

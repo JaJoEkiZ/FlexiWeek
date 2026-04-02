@@ -14,7 +14,8 @@ class Task extends Model
     protected $guarded = []; // Habilita asignación masiva
 
     protected $casts = [
-        'status' => TaskStatus::class, // <--- La magia
+        'status' => TaskStatus::class,
+        'is_persistent' => 'boolean',
     ];
 
     // Relación con Periodo

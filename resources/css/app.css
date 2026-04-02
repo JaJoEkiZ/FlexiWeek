@@ -64,3 +64,39 @@ select:focus[data-flux-control] {
 /* \[:where(&)\]:size-4 {
     @apply size-4;
 } */
+
+/* ===== Settings Form Theming ===== */
+.settings-input {
+    @apply w-full px-3 py-2.5 text-sm rounded-md transition-colors
+           focus:border-[#007fd4] focus:ring-1 focus:ring-[#007fd4] focus:outline-none;
+    /* Dark (default for .dark) */
+    background: #3c3c3c;
+    border: 1px solid #555;
+    color: #d4d4d4;
+}
+.settings-input::placeholder { color: #666; }
+
+:where(:not(.dark, .dark *)) .settings-input {
+    background: #f8f9fa;
+    border-color: #d1d5db;
+    color: #1f2937;
+}
+:where(:not(.dark, .dark *)) .settings-input::placeholder { color: #9ca3af; }
+
+.settings-label {
+    @apply block text-xs mb-1.5 uppercase tracking-wider;
+    color: #8b949e;
+}
+:where(:not(.dark, .dark *)) .settings-label {
+    color: #6b7280;
+}
+
+.settings-btn-primary {
+    @apply px-5 py-2 text-sm font-medium text-white bg-[#007fd4] rounded-md
+           hover:bg-[#006bb3] focus:outline-none focus:ring-2 focus:ring-[#007fd4]/50 transition-all;
+}
+
+.settings-btn-danger {
+    @apply px-4 py-2 text-sm font-medium text-white bg-[#da3633] rounded-md
+           hover:bg-[#f85149] focus:outline-none focus:ring-2 focus:ring-[#f85149]/50 transition-all;
+}

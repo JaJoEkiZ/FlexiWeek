@@ -26,6 +26,7 @@ class BoardItem extends Model
         'width' => 'float',
         'height' => 'float',
         'z_index' => 'integer',
+        'is_group' => 'boolean',
     ];
 
     public function user()

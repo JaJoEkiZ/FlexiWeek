@@ -1,23 +1,14 @@
-<div class="flex items-start max-md:flex-col bg-[#1e1e1e] text-[#d4d4d4]">
-    <div class="me-10 w-full pb-4 md:w-[220px]">
-        <flux:navlist aria-label="{{ __('Configuración') }}" class="space-y-1">
-            <flux:navlist.item :href="route('profile.edit')" wire:navigate class="hover:bg-[#333] text-[#d4d4d4] rounded px-2 py-1 transition-colors">{{ __('Perfil') }}</flux:navlist.item>
-            <flux:navlist.item :href="route('user-password.edit')" wire:navigate class="hover:bg-[#333] text-[#d4d4d4] rounded px-2 py-1 transition-colors">{{ __('Contraseña') }}</flux:navlist.item>
-            @if (Laravel\Fortify\Features::canManageTwoFactorAuthentication())
-                <flux:navlist.item :href="route('two-factor.show')" wire:navigate class="hover:bg-[#333] text-[#d4d4d4] rounded px-2 py-1 transition-colors">{{ __('Autenticación de Dos Factores') }}</flux:navlist.item>
-            @endif
-            <flux:navlist.item :href="route('appearance.edit')" wire:navigate class="hover:bg-[#333] text-[#d4d4d4] rounded px-2 py-1 transition-colors">{{ __('Apariencia') }}</flux:navlist.item>
-        </flux:navlist>
-    </div>
+@props(['heading' => '', 'subheading' => ''])
 
-    <flux:separator class="md:hidden border-[#333]" />
+<div class="bg-[#252526] dark:bg-[#252526] bg-white/80 border border-[#333] dark:border-[#333] border-gray-200 rounded-lg p-6 mb-6 {{ $attributes->get('class', '') }}">
+    @if($heading)
+        <h2 class="text-white dark:text-white text-gray-900 text-lg font-semibold mb-1">{{ $heading }}</h2>
+    @endif
+    @if($subheading)
+        <p class="text-[#7b7b7b] dark:text-[#7b7b7b] text-gray-500 text-sm mb-4">{{ $subheading }}</p>
+    @endif
 
-    <div class="flex-1 self-stretch max-md:pt-6 p-6">
-        <flux:heading class="text-white text-xl font-light mb-2">{{ $heading ?? '' }}</flux:heading>
-        <flux:subheading class="text-[#7b7b7b] text-sm mb-6">{{ $subheading ?? '' }}</flux:subheading>
-
-        <div class="mt-5 w-full max-w-lg">
-            {{ $slot }}
-        </div>
+    <div class="w-full max-w-lg">
+        {{ $slot }}
     </div>
 </div>
