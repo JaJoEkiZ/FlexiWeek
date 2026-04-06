@@ -34,29 +34,31 @@ new class extends Component
 <section class="w-full">
     @include('partials.settings-heading')
 
-    <x-settings.layout :heading="__('Actualizar Contraseña')" :subheading="__('Asegúrate de que tu cuenta utilice una contraseña larga y aleatoria para mantenerse segura')">
+    <x-settings.layout :heading="__('Actualizar Contraseña')" :subheading="__('Asegura tu cuenta con una clave robusta y difícil de adivinar')">
         <form method="POST" wire:submit="updatePassword" class="space-y-5">
             <div>
                 <label class="settings-label">{{ __('Contraseña Actual') }}</label>
-                <input wire:model="current_password" type="password" required autocomplete="current-password" class="settings-input" />
-                @error('current_password') <p class="mt-1 text-xs text-[#f85149]">{{ $message }}</p> @enderror
+                <input wire:model="current_password" type="password" required autocomplete="current-password" class="settings-input" placeholder="••••••••" />
+                @error('current_password') <p class="mt-1 text-xs text-[#f85149] font-medium">{{ $message }}</p> @enderror
             </div>
 
-            <div>
-                <label class="settings-label">{{ __('Nueva Contraseña') }}</label>
-                <input wire:model="password" type="password" required autocomplete="new-password" class="settings-input" />
-                @error('password') <p class="mt-1 text-xs text-[#f85149]">{{ $message }}</p> @enderror
-            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                    <label class="settings-label">{{ __('Nueva Contraseña') }}</label>
+                    <input wire:model="password" type="password" required autocomplete="new-password" class="settings-input" placeholder="Nueva clave..." />
+                    @error('password') <p class="mt-1 text-xs text-[#f85149] font-medium">{{ $message }}</p> @enderror
+                </div>
 
-            <div>
-                <label class="settings-label">{{ __('Confirmar Contraseña') }}</label>
-                <input wire:model="password_confirmation" type="password" required autocomplete="new-password" class="settings-input" />
+                <div>
+                    <label class="settings-label">{{ __('Confirmar Contraseña') }}</label>
+                    <input wire:model="password_confirmation" type="password" required autocomplete="new-password" class="settings-input" placeholder="Repite la clave..." />
+                </div>
             </div>
 
             <div class="flex items-center gap-4 pt-2">
-                <button type="submit" class="settings-btn-primary">{{ __('Guardar') }}</button>
-                <x-action-message class="text-sm text-[#4ec9b0]" on="password-updated">
-                    {{ __('✓ Guardado.') }}
+                <button type="submit" class="settings-btn-primary">{{ __('Cambiar Contraseña') }}</button>
+                <x-action-message class="text-sm text-[#4ec9b0] font-bold" on="password-updated">
+                    {{ __('✓ Contraseña actualizada.') }}
                 </x-action-message>
             </div>
         </form>

@@ -182,42 +182,66 @@ new class extends Component
     @include('partials.settings-heading')
 
     <x-settings.layout
-        :heading="__('Autenticación de dos factores')"
-        :subheading="__('Administra tu configuración de autenticación de dos factores')"
+        :heading="__('Autenticación de Dos Factores')"
+        :subheading="__('Añade una capa extra de seguridad a tu cuenta utilizando una aplicación de autenticación')"
     >
         <div class="flex flex-col w-full mx-auto space-y-6 text-sm" wire:cloak>
             @if ($twoFactorEnabled)
-                <div class="space-y-4">
-                    <div class="flex items-center gap-3">
-                        <span class="px-2.5 py-1 text-xs font-medium rounded-full bg-[#2ea043]/20 text-[#4ec9b0] border border-[#2ea043]/30">{{ __('Habilitado') }}</span>
+                <div class="space-y-6">
+                    <div class="flex items-center gap-3 p-4 rounded-lg bg-[#2ea043]/10 border border-[#2ea043]/20">
+                        <div class="flex items-center justify-center size-8 rounded-full bg-[#2ea043] text-white">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M2.166 4.9L9.03 9.03a2 2 0 001.94 0L17.834 4.9A2 2 0 0016 2H4a2 2 0 00-1.834 2.9zM18 8V16a2 2 0 01-2 2H4a2 2 0 01-2-2V8l7.03 4.217a4 4 0 003.94 0L18 8z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="font-bold text-[#4ec9b0]">{{ __('2FA está habilitado') }}</p>
+                            <p class="text-xs" style="color: var(--settings-subheading-text)">{{ __('Tu cuenta está protegida con seguridad de dos pasos.') }}</p>
+                        </div>
                     </div>
 
-                    <p class="text-sm text-[#8b949e]">
-                        {{ __('Con la autenticación de dos factores habilitada, se te solicitará un pin seguro y aleatorio durante el inicio de sesión, que puedes obtener de la aplicación compatible con TOTP en tu teléfono.') }}
-                    </p>
+                    <div class="p-4 rounded-lg bg-[var(--settings-input-bg)] border border-[var(--settings-card-border)]">
+                        <p class="text-sm font-medium mb-4" style="color: var(--settings-heading-text)">
+                            {{ __('Con la autenticación de dos factores habilitada, se te solicitará un pin seguro durante el inicio de sesión.') }}
+                        </p>
+                        
+                        <livewire:settings.two-factor.recovery-codes :$requiresConfirmation/>
+                    </div>
 
-                    <livewire:settings.two-factor.recovery-codes :$requiresConfirmation/>
-
-                    <div class="flex justify-start">
+                    <div class="flex justify-start pt-2">
                         <button wire:click="disable"
-                                class="px-4 py-2 text-sm font-medium text-white bg-[#da3633] rounded-md hover:bg-[#f85149] transition-all">
-                            🛡️ {{ __('Deshabilitar 2FA') }}
+                                class="settings-btn-danger flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                            </svg>
+                            {{ __('Deshabilitar 2FA') }}
                         </button>
                     </div>
                 </div>
             @else
-                <div class="space-y-4">
-                    <div class="flex items-center gap-3">
-                        <span class="px-2.5 py-1 text-xs font-medium rounded-full bg-[#da3633]/20 text-[#f85149] border border-[#da3633]/30">{{ __('Deshabilitado') }}</span>
+                <div class="space-y-6">
+                    <div class="flex items-center gap-3 p-4 rounded-lg bg-gray-500/10 border border-gray-500/20">
+                        <div class="flex items-center justify-center size-8 rounded-full bg-gray-500 text-white">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2V7a5 5 0 00-5-5zM7 7a3 3 0 016 0v2H7V7z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="font-bold text-gray-500">{{ __('2FA está deshabilitado') }}</p>
+                            <p class="text-xs" style="color: var(--settings-subheading-text)">{{ __('Añade seguridad adicional a tu cuenta.') }}</p>
+                        </div>
                     </div>
 
-                    <p class="text-sm text-[#7b7b7b]">
-                        {{ __('Cuando habilitas la autenticación de dos factores, se te solicitará un pin seguro durante el inicio de sesión. Este pin se puede obtener de una aplicación compatible con TOTP en tu teléfono.') }}
+                    <p class="text-sm font-medium" style="color: var(--settings-subheading-text)">
+                        {{ __('Cuando habilitas la autenticación de dos factores, se te solicitará un pin seguro de una aplicación compatible con TOTP en tu teléfono.') }}
                     </p>
 
                      <button wire:click="enable"
-                             class="px-4 py-2 text-sm font-medium text-white bg-[#007fd4] rounded-md hover:bg-[#006bb3] transition-all">
-                        🛡️ {{ __('Habilitar 2FA') }}
+                             class="settings-btn-primary flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M2.166 4.9L9.03 9.03a2 2 0 001.94 0L17.834 4.9A2 2 0 0016 2H4a2 2 0 00-1.834 2.9zM18 8V16a2 2 0 01-2 2H4a2 2 0 01-2-2V8l7.03 4.217a4 4 0 003.94 0L18 8z" clip-rule="evenodd" />
+                        </svg>
+                        {{ __('Configurar 2FA') }}
                     </button>
                 </div>
             @endif

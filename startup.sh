@@ -8,6 +8,7 @@ service nginx reload
 php /home/site/wwwroot/artisan config:clear
 php /home/site/wwwroot/artisan route:clear
 php /home/site/wwwroot/artisan view:clear
+php /home/site/wwwroot/artisan cache:clear
 
 # 3. Enlace simbólico para imágenes
 php /home/site/wwwroot/artisan storage:link
