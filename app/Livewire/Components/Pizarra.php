@@ -175,7 +175,7 @@ class Pizarra extends Component
             ->firstOrFail();
 
         $subtask->update([
-            'is_completed' => ! $subtask->is_completed,
+            'is_completed' => $subtask->is_completed ? 0 : 1,
         ]);
 
         $this->loadItems();

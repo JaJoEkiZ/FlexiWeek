@@ -192,7 +192,7 @@ class TaskForm extends Component
                 $task->subtasks()->create([
                     'title' => $subtaskData['title'],
                     'description' => $subtaskData['description'] ?? '',
-                    'is_completed' => $subtaskData['is_completed'] ?? false,
+                    'is_completed' => !empty($subtaskData['is_completed']) ? 1 : 0,
                     'estimated_minutes' => $estimatedMinutes,
                     'spent_minutes' => $spentMinutes,
                 ]);

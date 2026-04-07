@@ -154,10 +154,10 @@ class WeeklyPlanner extends Component
 
         $subtask = \App\Models\Subtask::find($subtaskId);
         if ($subtask && $subtask->task_id == $taskId) {
-            $subtask->update(['is_completed' => ! $subtask->is_completed]);
+            $subtask->update(['is_completed' => $subtask->is_completed ? 0 : 1]);
 
             $total     = $task->subtasks()->count();
-            $completed = $task->subtasks()->where('is_completed', true)->count();
+            $completed = $task->subtasks()->where('is_completed', 1)->count();
 
             if ($total === $completed && $total > 0) {
                 $task->update(['status' => TaskStatus::Completed]);
@@ -166,6 +166,10 @@ class WeeklyPlanner extends Component
                 if ($task->status === TaskStatus::Completed) {
                     $task->update(['status' => TaskStatus::InProgress]);
                 }
+                
+                // Add a toast to confirm backend execution
+                $statusMsg = $subtask->is_completed ? 'completada' : 'desmarcada';
+                $this->dispatch('toast', message: "Subtarea '{$subtask->title}' {$statusMsg}.", type: 'success');
             }
 
             $task->touch(); // Force updated_at change for wire:key
