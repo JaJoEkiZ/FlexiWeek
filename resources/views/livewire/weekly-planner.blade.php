@@ -229,7 +229,7 @@
                                 <th class="p-4 border-b border-[#333] w-40 text-left">Asignar a</th>
                                 <th class="p-4 border-b border-[#333] w-32 text-center">Trabajo realizado</th>
                                 <th class="p-4 border-b border-[#333] w-32 text-center">Trabajo restante</th>
-                                <th class="p-4 border-b border-[#333] w-48">Control de Tiempo</th>
+                                <th class="p-4 border-b border-[#333] w-56">Control de Tiempo</th>
                                 <th class="p-4 border-b border-[#333] w-20">Editar</th>
                             </tr>
                         </thead>
@@ -367,21 +367,20 @@
                                                     <input type="number" @click.stop placeholder="min" x-model="inputMins" @keydown.enter="addTime()"
                                                            :disabled="statusValue === 'cancelled'"
                                                            :class="statusValue === 'cancelled' ? 'opacity-50 cursor-not-allowed' : ''"
-                                                           class="w-[70px] px-2 py-1 text-xs bg-[#3c3c3c] border border-[#333] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:ring-1 focus:ring-[#007fd4] focus:outline-none placeholder-[#666]">
+                                                           class="flex-1 min-w-[70px] px-2 py-1 text-xs bg-[#3c3c3c] border border-[#333] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:ring-1 focus:ring-[#007fd4] focus:outline-none placeholder-[#666]">
                                                 </template>
                                                 <template x-if="timeMode === 'hm'">
-                                                    <div class="flex gap-1 items-center w-[70px]" @click.stop>
+                                                    <div class="flex flex-1 min-w-[70px] gap-1 items-center" @click.stop>
                                                         <input type="number" placeholder="h" min="0" x-model="inputHours" @keydown.enter="addTime()" :disabled="statusValue === 'cancelled'" :class="statusValue === 'cancelled' ? 'opacity-50 cursor-not-allowed' : ''" class="w-full px-1.5 py-1 text-[11px] bg-[#3c3c3c] border border-[#333] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:ring-1 focus:ring-[#007fd4] focus:outline-none placeholder-[#666]">
                                                         <span class="text-[#7b7b7b] text-[10px]">:</span>
                                                         <input type="number" placeholder="m" min="0" max="59" x-model="inputMins" @keydown.enter="addTime()" :disabled="statusValue === 'cancelled'" :class="statusValue === 'cancelled' ? 'opacity-50 cursor-not-allowed' : ''" class="w-full px-1.5 py-1 text-[11px] bg-[#3c3c3c] border border-[#333] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:ring-1 focus:ring-[#007fd4] focus:outline-none placeholder-[#666]">
                                                     </div>
                                                 </template>
                                                 <button @click.stop="addTime()" :disabled="statusValue === 'cancelled'" :class="statusValue === 'cancelled' ? 'opacity-50 cursor-not-allowed hover:bg-[#333]' : 'hover:bg-[#444] hover:text-[#fff]'" class="px-2.5 py-1 bg-[#333] text-[#d4d4d4] rounded border border-[#333] text-xs font-bold transition-colors select-none">+</button>
-                                                
-                                                <button @click.stop="timeMode = timeMode === 'min' ? 'hm' : 'min'" class="px-1.5 py-0.5 ml-auto text-[9px] font-medium text-[#ffffff] bg-transparent border border-[#30363d] rounded hover:bg-[#152e42] hover:border-[#1f6feb] transition-all self-center text-center leading-tight whitespace-nowrap" type="button">
-                                                     <span x-text="timeMode === 'min' ? 'h:m' : 'min'"></span>
-                                                </button>
                                             </div>
+                                            <button @click.stop="timeMode = timeMode === 'min' ? 'hm' : 'min'" class="w-full px-1.5 py-0.5 text-[9px] font-medium text-[#ffffff] bg-transparent border border-[#30363d] rounded hover:bg-[#152e42] hover:border-[#1f6feb] transition-all text-center leading-tight whitespace-nowrap" type="button">
+                                                <span x-text="timeMode === 'min' ? '⏱ Cargar hora:min' : '⏱ Cargar min'"></span>
+                                            </button>
                                         </div>
                                     </td>
                                     <td class="p-4 text-center">
