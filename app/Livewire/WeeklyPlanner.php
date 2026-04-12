@@ -143,36 +143,45 @@ class WeeklyPlanner extends Component
         $this->dispatch('$refresh');
     }
 
+    #[Renderless]
     public function toggleSubtask($taskId, $subtaskId)
     {
-        $task = Task::findOrFail($taskId);
+        try {
+            $task = Task::findOrFail($taskId);
 
-        // Security check: ensure task belongs to the user
-        if ($task->period->user_id !== auth()->id()) {
-            return;
-        }
-
-        $subtask = \App\Models\Subtask::find($subtaskId);
-        if ($subtask && $subtask->task_id == $taskId) {
-            $subtask->update(['is_completed' => $subtask->is_completed ? 0 : 1]);
-
-            $total     = $task->subtasks()->count();
-            $completed = $task->subtasks()->where('is_completed', 1)->count();
-
-            if ($total === $completed && $total > 0) {
-                $task->update(['status' => TaskStatus::Completed]);
-                $this->dispatch('toast', message: '¡Todas las subtareas completadas!', type: 'success');
-            } else {
-                if ($task->status === TaskStatus::Completed) {
-                    $task->update(['status' => TaskStatus::InProgress]);
-                }
-                
-                // Add a toast to confirm backend execution
-                $statusMsg = $subtask->is_completed ? 'completada' : 'desmarcada';
-                $this->dispatch('toast', message: "Subtarea '{$subtask->title}' {$statusMsg}.", type: 'success');
+            // Security check: ensure task belongs to the user
+            if ($task->period->user_id !== auth()->id()) {
+                \Illuminate\Support\Facades\Log::warning("Unauthorized toggle attempt for task {$taskId}");
+                return;
             }
 
-            $task->touch(); // Force updated_at change for wire:key
+            $subtask = \App\Models\Subtask::find($subtaskId);
+            if ($subtask && $subtask->task_id == $taskId) {
+                $subtask->update(['is_completed' => $subtask->is_completed ? 0 : 1]);
+
+                $total     = $task->subtasks()->count();
+                $completed = $task->subtasks()->where('is_completed', 1)->count();
+
+                if ($total === $completed && $total > 0) {
+                    $task->update(['status' => TaskStatus::Completed]);
+                    $this->dispatch('toast', message: '¡Todas las subtareas completadas!', type: 'success');
+                } else {
+                    if ($task->status === TaskStatus::Completed) {
+                        $task->update(['status' => TaskStatus::InProgress]);
+                    }
+                    
+                    // Add a toast to confirm backend execution
+                    $statusMsg = $subtask->is_completed ? 'completada' : 'desmarcada';
+                    $this->dispatch('toast', message: "Subtarea '{$subtask->title}' {$statusMsg}.", type: 'success');
+                }
+
+                $task->touch(); // Force updated_at change for wire:key
+            } else {
+                $this->dispatch('toast', message: "Subtarea {$subtaskId} no encontrada para la tarea {$taskId}.", type: 'error');
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Error toggling subtask: " . $e->getMessage(), ['exception' => $e]);
+            $this->dispatch('toast', message: "Error interno: " . substr($e->getMessage(), 0, 100), type: 'error');
         }
     }
 

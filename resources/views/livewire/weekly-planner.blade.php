@@ -509,7 +509,7 @@
                     this.statusLabel = 'Pendiente';
                 }
 
-                $wire.cycleStatus(this.taskId);
+                this.$wire.call('cycleStatus', this.taskId);
             },
 
             formatTime(minutes) {
@@ -543,7 +543,7 @@
                         this.markInProgress();
                     }
                     
-                    $wire.addTime(this.taskId, h, m, this.activeSubtaskId);
+                    this.$wire.call('addTime', this.taskId, h, m, this.activeSubtaskId);
                     
                     this.inputHours = '';
                     this.inputMins = '';
@@ -568,7 +568,7 @@
                         }
                     }
 
-                    $wire.toggleSubtask(this.taskId, st.id);
+                    this.$wire.call('toggleSubtask', this.taskId, st.id);
                 }
             }
         }));

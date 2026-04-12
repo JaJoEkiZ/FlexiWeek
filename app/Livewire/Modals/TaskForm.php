@@ -84,149 +84,154 @@ class TaskForm extends Component
 
     public function saveTask($draftTask)
     {
-        // El frontend envía el objeto $draftTask completo
-        $taskId = $draftTask['id'] ?? null;
-        
-        // Bloquear edición de tareas canceladas
-        if ($taskId) {
-            $existingTask = Task::find($taskId);
-            if ($existingTask && $existingTask->status === TaskStatus::Cancelled) {
-                session()->flash('message', 'No se puede editar una tarea cancelada.');
-                $this->isOpen = false;
-                return;
-            }
-        }
-
-        // Convertir a enteros para ignorar ceros a la izquierda
-        $hours = (int) ($draftTask['hours'] ?? 0);
-        $minutes = (int) ($draftTask['minutes'] ?? 0);
-
-        // Simulamos setear las propiedades locales para usar el método validate de Livewire
-        // O podemos simplemente usar Validator::make
-        $validator = \Illuminate\Support\Facades\Validator::make($draftTask, [
-            'periodId' => 'required|exists:periods,id',
-            'title' => 'required|min:3',
-            'description' => 'nullable|string',
-            'hours' => 'required|integer|min:0',
-            'minutes' => 'required|integer|min:0|max:59',
-            'completionMethod' => 'required|in:time,subtasks',
-            'subtasks' => 'array',
-            'subtasks.*.title' => 'required_if:completionMethod,subtasks|string|max:255',
-        ], [
-            'periodId.required' => 'Debes seleccionar una semana.',
-            'periodId.exists' => 'La semana seleccionada no es válida.',
-            'title.required' => 'El título de la tarea es obligatorio.',
-            'title.min' => 'El título debe tener al menos 3 caracteres.',
-            'hours.required' => 'Las horas son obligatorias.',
-            'hours.integer' => 'Las horas deben ser un número entero.',
-            'hours.min' => 'Las horas no pueden ser negativas.',
-            'minutes.required' => 'Los minutos son obligatorios.',
-            'minutes.integer' => 'Los minutos deben ser un número entero.',
-            'minutes.min' => 'Los minutos no pueden ser negativos.',
-            'minutes.max' => 'Los minutos no pueden exceder 59.',
-            'subtasks.*.title.required_if' => 'El título de la subtarea es obligatorio.',
-            'subtasks.*.title.max' => 'El título de la subtarea es muy largo.',
-        ]);
-
-        if ($validator->fails()) {
-            // Pasamos los errores al componente principal de Livewire
-            foreach ($validator->errors()->toArray() as $field => $messages) {
-                foreach ($messages as $msg) {
-                    $this->addError($field, $msg);
+        try {
+            // El frontend envía el objeto $draftTask completo
+            $taskId = $draftTask['id'] ?? null;
+            
+            // Bloquear edición de tareas canceladas
+            if ($taskId) {
+                $existingTask = Task::find($taskId);
+                if ($existingTask && $existingTask->status === TaskStatus::Cancelled) {
+                    session()->flash('message', 'No se puede editar una tarea cancelada.');
+                    $this->isOpen = false;
+                    return;
                 }
             }
-            return;
-        }
 
-        $completionMethod = $draftTask['completionMethod'] ?? 'time';
-        $subtasks = $draftTask['subtasks'] ?? [];
+            // Convertir a enteros para ignorar ceros a la izquierda
+            $hours = (int) ($draftTask['hours'] ?? 0);
+            $minutes = (int) ($draftTask['minutes'] ?? 0);
 
-        // Validación adicional: si es por subtareas, debe tener al menos 1
-        if ($completionMethod === 'subtasks' && empty($subtasks)) {
-            $this->addError('subtasks', 'Debes agregar al menos 1 subtarea para usar el control por subtareas.');
-            return;
-        }
-
-        $totalMinutes = ($hours * 60) + $minutes;
-
-        // Validación adicional: si es por tiempo, debe tener al menos 10 minutos
-        if ($completionMethod === 'time' && $totalMinutes < 10) {
-            $this->addError('minutes', 'Las tareas por tiempo deben tener al menos 10 minutos.');
-            return;
-        }
-
-        if ($taskId) {
-            $task = Task::findOrFail($taskId);
-            $task->update([
-                'period_id' => $draftTask['periodId'],
-                'title' => $draftTask['title'],
-                'description' => $draftTask['description'] ?? '',
-                'estimated_minutes' => $totalMinutes,
-                'completion_method' => $completionMethod,
-                'is_persistent' => $draftTask['isPersistent'] ?? false,
+            // Simulamos setear las propiedades locales para usar el método validate de Livewire
+            // O podemos simplemente usar Validator::make
+            $validator = \Illuminate\Support\Facades\Validator::make($draftTask, [
+                'periodId' => 'required|exists:periods,id',
+                'title' => 'required|min:3',
+                'description' => 'nullable|string',
+                'hours' => 'required|integer|min:0',
+                'minutes' => 'required|integer|min:0|max:59',
+                'completionMethod' => 'required|in:time,subtasks',
+                'subtasks' => 'array',
+                'subtasks.*.title' => 'required_if:completionMethod,subtasks|string|max:255',
+            ], [
+                'periodId.required' => 'Debes seleccionar una semana.',
+                'periodId.exists' => 'La semana seleccionada no es válida.',
+                'title.required' => 'El título de la tarea es obligatorio.',
+                'title.min' => 'El título debe tener al menos 3 caracteres.',
+                'hours.required' => 'Las horas son obligatorias.',
+                'hours.integer' => 'Las horas deben ser un número entero.',
+                'hours.min' => 'Las horas no pueden ser negativas.',
+                'minutes.required' => 'Los minutos son obligatorios.',
+                'minutes.integer' => 'Los minutos deben ser un número entero.',
+                'minutes.min' => 'Los minutos no pueden ser negativos.',
+                'minutes.max' => 'Los minutos no pueden exceder 59.',
+                'subtasks.*.title.required_if' => 'El título de la subtarea es obligatorio.',
+                'subtasks.*.title.max' => 'El título de la subtarea es muy largo.',
             ]);
-            $message = 'Tarea actualizada correctamente.';
-        } else {
-            $task = Task::create([
-                'period_id' => $draftTask['periodId'],
-                'title' => $draftTask['title'],
-                'description' => $draftTask['description'] ?? '',
-                'estimated_minutes' => $totalMinutes,
-                'status' => TaskStatus::Pending,
-                'completion_method' => $completionMethod,
-                'is_persistent' => $draftTask['isPersistent'] ?? false,
-            ]);
-            $message = 'Tarea creada correctamente.';
-        }
 
-        // Guardar Subtareas
-        if ($taskId) {
-            $task->subtasks()->delete();
-        }
-
-        foreach ($subtasks as $subtaskData) {
-            if (! empty($subtaskData['title'])) {
-                $estimatedMinutes = ((int) ($subtaskData['estimated_hours'] ?? 0) * 60) + (int) ($subtaskData['estimated_minutes'] ?? 0);
-                $spentMinutes = ((int) ($subtaskData['spent_hours'] ?? 0) * 60) + (int) ($subtaskData['spent_minutes'] ?? 0);
-
-                $task->subtasks()->create([
-                    'title' => $subtaskData['title'],
-                    'description' => $subtaskData['description'] ?? '',
-                    'is_completed' => !empty($subtaskData['is_completed']) ? 1 : 0,
-                    'estimated_minutes' => $estimatedMinutes,
-                    'spent_minutes' => $spentMinutes,
-                ]);
+            if ($validator->fails()) {
+                // Pasamos los errores al componente principal de Livewire
+                foreach ($validator->errors()->toArray() as $field => $messages) {
+                    foreach ($messages as $msg) {
+                        $this->addError($field, $msg);
+                    }
+                }
+                return;
             }
-        }
 
-        // Refrescar modelo y relaciones para recalcular progreso
-        $task->refresh();
-        $task->load(['subtasks', 'timeLogs']);
+            $completionMethod = $draftTask['completionMethod'] ?? 'time';
+            $subtasks = $draftTask['subtasks'] ?? [];
 
-        if ($completionMethod === 'subtasks' && $task->subtasks()->count() > 0) {
-            $total = $task->subtasks()->count();
-            $completed = $task->subtasks()->where('is_completed', true)->count();
+            // Validación adicional: si es por subtareas, debe tener al menos 1
+            if ($completionMethod === 'subtasks' && empty($subtasks)) {
+                $this->addError('subtasks', 'Debes agregar al menos 1 subtarea para usar el control por subtareas.');
+                return;
+            }
 
-            if ($total === $completed) {
-                $task->update(['status' => TaskStatus::Completed]);
+            $totalMinutes = ($hours * 60) + $minutes;
+
+            // Validación adicional: si es por tiempo, debe tener al menos 10 minutos
+            if ($completionMethod === 'time' && $totalMinutes < 10) {
+                $this->addError('minutes', 'Las tareas por tiempo deben tener al menos 10 minutos.');
+                return;
+            }
+
+            if ($taskId) {
+                $task = Task::findOrFail($taskId);
+                $task->update([
+                    'period_id' => $draftTask['periodId'],
+                    'title' => $draftTask['title'],
+                    'description' => $draftTask['description'] ?? '',
+                    'estimated_minutes' => $totalMinutes,
+                    'completion_method' => $completionMethod,
+                    'is_persistent' => $draftTask['isPersistent'] ?? false,
+                ]);
+                $message = 'Tarea actualizada correctamente.';
             } else {
-                if ($task->status === TaskStatus::Completed) {
+                $task = Task::create([
+                    'period_id' => $draftTask['periodId'],
+                    'title' => $draftTask['title'],
+                    'description' => $draftTask['description'] ?? '',
+                    'estimated_minutes' => $totalMinutes,
+                    'status' => TaskStatus::Pending,
+                    'completion_method' => $completionMethod,
+                    'is_persistent' => $draftTask['isPersistent'] ?? false,
+                ]);
+                $message = 'Tarea creada correctamente.';
+            }
+
+            // Guardar Subtareas
+            if ($taskId) {
+                $task->subtasks()->delete();
+            }
+
+            foreach ($subtasks as $subtaskData) {
+                if (! empty($subtaskData['title'])) {
+                    $estimatedMinutes = ((int) ($subtaskData['estimated_hours'] ?? 0) * 60) + (int) ($subtaskData['estimated_minutes'] ?? 0);
+                    $spentMinutes = ((int) ($subtaskData['spent_hours'] ?? 0) * 60) + (int) ($subtaskData['spent_minutes'] ?? 0);
+
+                    $task->subtasks()->create([
+                        'title' => $subtaskData['title'],
+                        'description' => $subtaskData['description'] ?? '',
+                        'is_completed' => !empty($subtaskData['is_completed']) ? 1 : 0,
+                        'estimated_minutes' => $estimatedMinutes,
+                        'spent_minutes' => $spentMinutes,
+                    ]);
+                }
+            }
+
+            // Refrescar modelo y relaciones para recalcular progreso
+            $task->refresh();
+            $task->load(['subtasks', 'timeLogs']);
+
+            if ($completionMethod === 'subtasks' && $task->subtasks()->count() > 0) {
+                $total = $task->subtasks()->count();
+                $completed = $task->subtasks()->where('is_completed', true)->count();
+
+                if ($total === $completed) {
+                    $task->update(['status' => TaskStatus::Completed]);
+                } else {
+                    if ($task->status === TaskStatus::Completed) {
+                        $task->update(['status' => TaskStatus::InProgress]);
+                    }
+                }
+            }
+
+            if ($completionMethod === 'time' && $task->status === TaskStatus::Completed) {
+                if ($task->progress < 100) {
                     $task->update(['status' => TaskStatus::InProgress]);
                 }
             }
+
+            $task->touch(); // Force updated_at to ensure wire:key causes a total component remount
+
+            $this->isOpen = false;
+            $this->dispatch('taskSaved'); // Notify parent to refresh
+            $this->dispatch('toast', message: $message, type: 'success');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Error saving task: " . $e->getMessage(), ['exception' => $e]);
+            $this->dispatch('toast', message: "Error interno al guardar: " . substr($e->getMessage(), 0, 100), type: 'error');
         }
-
-        if ($completionMethod === 'time' && $task->status === TaskStatus::Completed) {
-            if ($task->progress < 100) {
-                $task->update(['status' => TaskStatus::InProgress]);
-            }
-        }
-
-        $task->touch(); // Force updated_at to ensure wire:key causes a total component remount
-
-        $this->isOpen = false;
-        $this->dispatch('taskSaved'); // Notify parent to refresh
-        $this->dispatch('toast', message: $message, type: 'success');
     }
 
     public function close()
