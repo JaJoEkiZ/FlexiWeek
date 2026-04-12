@@ -38,25 +38,25 @@ new class extends Component
         <form method="POST" wire:submit="updatePassword" class="space-y-5">
             <div>
                 <label class="settings-label">{{ __('Contraseña Actual') }}</label>
-                <input wire:model="current_password" type="password" required autocomplete="current-password" class="settings-input" placeholder="••••••••" />
+                <input wire:model="current_password" type="password" required autocomplete="current-password" class="bg-white/10 backdrop-blur-md rounded-md border border-white/20 shadow-lg w-full px-3 py-2 text-sm text-[#d4d4d4] placeholder-[#666] outline-none focus:border-[#007fd4] transition-colors" placeholder="••••••••" />
                 @error('current_password') <p class="mt-1 text-xs text-[#f85149] font-medium">{{ $message }}</p> @enderror
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
                     <label class="settings-label">{{ __('Nueva Contraseña') }}</label>
-                    <input wire:model="password" type="password" required autocomplete="new-password" class="settings-input" placeholder="Nueva clave..." />
+                    <input wire:model="password" type="password" required autocomplete="new-password" class="bg-white/10 backdrop-blur-md rounded-md border border-white/20 shadow-lg w-full px-3 py-2 text-sm text-[#d4d4d4] placeholder-[#666] outline-none focus:border-[#007fd4] transition-colors" placeholder="Nueva clave..." />
                     @error('password') <p class="mt-1 text-xs text-[#f85149] font-medium">{{ $message }}</p> @enderror
                 </div>
 
                 <div>
                     <label class="settings-label">{{ __('Confirmar Contraseña') }}</label>
-                    <input wire:model="password_confirmation" type="password" required autocomplete="new-password" class="settings-input" placeholder="Repite la clave..." />
+                    <input wire:model="password_confirmation" type="password" required autocomplete="new-password" class="bg-white/10 backdrop-blur-md rounded-md border border-white/20 shadow-lg w-full px-3 py-2 text-sm text-[#d4d4d4] placeholder-[#666] outline-none focus:border-[#007fd4] transition-colors" placeholder="Repite la clave..." />
                 </div>
             </div>
 
             <div class="flex items-center gap-4 pt-2">
-                <button type="submit" class="settings-btn-primary">{{ __('Cambiar Contraseña') }}</button>
+                <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-[#007fd4] border border-[#1a93e3] rounded-md hover:bg-[#006bb3] hover:shadow-lg hover:shadow-[#007fd4]/30 active:scale-95 transition-all">{{ __('Cambiar Contraseña') }}</button>
                 <x-action-message class="text-sm text-[#4ec9b0] font-bold" on="password-updated">
                     {{ __('✓ Contraseña actualizada.') }}
                 </x-action-message>
@@ -64,7 +64,7 @@ new class extends Component
         </form>
     </x-settings.layout>
 
-    {{-- Close the settings-heading containers --}}
+    {{-- Close the content + outer layout containers from settings-heading --}}
         </div>
     </div>
 </div>

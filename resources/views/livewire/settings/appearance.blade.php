@@ -56,6 +56,13 @@ new class extends Component
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" />
                 </svg>
+                {{ __('FlexiWeek está diseñado exclusivamente para el modo oscuro para garantizar la mejor experiencia visual.') }}
+            </p>
+        </div>
+    </x-settings.layout>
+
+    {{-- Close the content + outer layout containers from settings-heading --}}
+        </div>
     </div>
 </div>
 </section>
