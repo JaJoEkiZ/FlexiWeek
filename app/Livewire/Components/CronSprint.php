@@ -8,6 +8,7 @@ use App\Models\TaskTimeLog;
 use App\Models\Period;
 use App\Enums\TaskStatus;
 use Livewire\Component;
+use Livewire\Attributes\Renderless;
 
 class CronSprint extends Component
 {
@@ -24,6 +25,7 @@ class CronSprint extends Component
         // Ya no necesitamos $periodId pasado. 
     }
 
+    #[Renderless]
     public function saveTimerState($state)
     {
         if (auth()->check()) {
@@ -31,6 +33,7 @@ class CronSprint extends Component
         }
     }
 
+    #[Renderless]
     public function clearTimerState()
     {
         if (auth()->check()) {

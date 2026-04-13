@@ -180,6 +180,11 @@
             this.mode = 'assigning';
             localStorage.setItem('cronSprint_mode', 'assigning');
             localStorage.setItem('cronSprint_minutesToAssign', this.minutesToAssign);
+            
+            // Auto-expand panel when assigning time so it isn't hidden from the user
+            this.isCollapsed = false;
+            localStorage.setItem('cronSprintCollapsed', 'false');
+
             this.syncState();
         },
         
@@ -315,7 +320,7 @@
         <div class="flex items-center gap-3">
             <!-- Timer miniatura -->
             <div x-show="isCollapsed && (mode === 'sprint' || mode === 'free')" 
-                 style="display: none;"
+                 x-cloak
                  class="text-[10px] font-mono font-bold font-variant-numeric: tabular-nums tracking-tighter"
                  :class="{
                     'text-[#007fd4]': mode === 'sprint' && activeSprint === '33:33',
@@ -380,7 +385,7 @@
         </div>
 
         <!-- ACTIVE TIMER -->
-        <div x-show="mode === 'sprint' || mode === 'free'" style="display: none;" class="flex flex-col items-center justify-center h-full space-y-4 py-4">
+        <div x-show="mode === 'sprint' || mode === 'free'" x-cloak class="flex flex-col items-center justify-center h-full space-y-4 py-4">
             
             <div class="flex flex-col items-center">
                 <div class="text-[10px] text-[#7b7b7b] uppercase tracking-wider" x-text="mode === 'sprint' ? 'Sprint Activo' : 'Cronómetro Libre'"></div>
@@ -427,7 +432,7 @@
                     <!-- PAUSE ICON -->
                     <svg x-show="intervalId" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#d4d4d4]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     <!-- PLAY ICON -->
-                    <svg x-show="!intervalId" xmlns="http://www.w3.org/2000/svg" style="display:none;" class="h-4 w-4 text-[#d4d4d4]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <svg x-show="!intervalId" xmlns="http://www.w3.org/2000/svg" x-cloak class="h-4 w-4 text-[#d4d4d4]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </button>
                 <button type="button" @click="stopTimer()" class="w-10 h-10 rounded-full flex justify-center items-center bg-[#3b1219] hover:bg-[#f85149] border border-[#da3633] transition-colors group">
                     <!-- STOP ICON -->
@@ -437,7 +442,7 @@
         </div>
 
         <!-- ASSIGNING MODE -->
-        <div x-show="mode === 'assigning'" style="display: none;" class="space-y-4">
+        <div x-show="mode === 'assigning'" x-cloak class="space-y-4">
             
             <div class="bg-[#1e3a23] border border-[#2ea043] rounded p-3 text-center">
                 <div class="text-[10px] text-[#7ee787] uppercase mb-1">Tiempo a registrar</div>
