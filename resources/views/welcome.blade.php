@@ -6,9 +6,7 @@
 
         <title>FlexiWeek</title>
 
-        <link rel="icon" href="/favicon.ico" sizes="any">
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+        <link rel="icon" type="image/png" href="{{ asset('images/flexiweek-Iso.png') }}">
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
@@ -50,11 +48,11 @@
                                 </a>
                             @else
                                 <a href="{{ route('login') }}" class="inline-block px-5 py-2 w-full max-w-xs text-center dark:text-[#EDEDEC] text-[#1b1b18] border border-gray-300 hover:border-gray-400 dark:border-zinc-700 dark:hover:border-zinc-600 rounded-md text-sm leading-normal bg-white dark:bg-zinc-800 shadow-sm">
-                                    Log in
+                                    Iniciar sesión
                                 </a>
                                 @if (Route::has('register'))
                                     <a href="{{ route('register') }}" class="inline-block px-5 py-2 w-full max-w-xs text-center dark:text-[#EDEDEC] border-[#19140035] hover:border-[#1915014a] border text-[#1b1b18] dark:border-[#3E3E3A] dark:hover:border-[#62605b] rounded-md text-sm leading-normal bg-white dark:bg-zinc-800 shadow-sm">
-                                        Register
+                                        Regístrate
                                     </a>
                                 @endif
                             @endauth

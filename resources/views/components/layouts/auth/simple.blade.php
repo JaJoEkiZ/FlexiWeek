@@ -2,20 +2,34 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
     <head>
         @include('partials.head')
+        <script>
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.classList.add('dark');
+            }
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+                if (event.matches) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            });
+        </script>
     </head>
-    <body class="min-h-screen bg-white antialiased dark:bg-linear-to-b dark:from-neutral-950 dark:to-neutral-900">
-        <div class="bg-background flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
-            <div class="flex w-full max-w-sm flex-col gap-2">
-                <a href="{{ route('home') }}" class="flex flex-col items-center gap-2 font-medium" wire:navigate>
-                    <span class="flex h-9 w-9 mb-1 items-center justify-center rounded-md">
-                        <x-app-logo-icon class="size-9 fill-current text-black dark:text-white" />
-                    </span>
-                    <span class="sr-only">{{ config('app.name', 'Laravel') }}</span>
-                </a>
-                <div class="flex flex-col gap-6">
-                    {{ $slot }}
+    <body class="bg-[#FDFDFC] dark:bg-[#0a0a0a] text-[#1b1b18] flex min-h-screen flex-col items-center justify-center p-6 lg:p-8">
+        <div class="flex w-full grow items-center justify-center">
+            <main class="w-full max-w-md">
+                <div class="bg-zinc-100 dark:bg-zinc-900 relative rounded-xl shadow-lg border border-zinc-200 dark:border-zinc-800 w-full overflow-hidden flex flex-col items-center justify-center gap-4 p-8">
+                    <div class="absolute inset-0 rounded-xl pointer-events-none shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.05)] dark:shadow-[inset_0px_0px_0px_1px_#fffaed10]"></div>
+                    
+                    <a href="{{ url('/') }}" class="mx-auto block" wire:navigate>
+                        <img src="{{ asset('images/flexiweek-Iso.png') }}" alt="Logo Icon" class="w-[200px] h-auto mb-4 drop-shadow-sm z-10 relative">
+                    </a>
+                    
+                    <div class="w-full max-w-sm relative z-50 mx-auto text-left dark:text-zinc-300">
+                        {{ $slot }}
+                    </div>
                 </div>
-            </div>
+            </main>
         </div>
         @fluxScripts
     </body>

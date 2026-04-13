@@ -46,11 +46,16 @@ class TaskDetails extends Component
     public function save()
     {
         // Save task description
-        $this->task->update(['description' => $this->description]);
+        if ($this->task->description !== $this->description) {
+            $this->task->update(['description' => $this->description]);
+        }
 
         // Save subtask descriptions
         foreach ($this->subtaskDescriptions as $subtaskId => $desc) {
-            $this->task->subtasks()->where('id', $subtaskId)->update(['description' => $desc]);
+            $subtask = $this->task->subtasks->firstWhere('id', $subtaskId);
+            if ($subtask && $subtask->description !== $desc) {
+                $subtask->update(['description' => $desc]);
+            }
         }
 
         $this->isEditing = false;

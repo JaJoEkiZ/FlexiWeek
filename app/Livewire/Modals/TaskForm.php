@@ -58,6 +58,7 @@ class TaskForm extends Component
             $this->isPersistent = (bool) $task->is_persistent;
             $this->subtasks = $task->subtasks()->get()->map(function ($subtask) {
                 return [
+                    'id' => $subtask->id,
                     'title' => $subtask->title,
                     'description' => $subtask->description ?? '',
                     'is_completed' => (bool) $subtask->is_completed,
@@ -180,24 +181,44 @@ class TaskForm extends Component
                 $message = 'Tarea creada correctamente.';
             }
 
-            // Guardar Subtareas
-            if ($taskId) {
-                $task->subtasks()->delete();
-            }
+            // Guardar Subtareas evitando destruir y crear para no perder updated_at
+            $keptSubtaskIds = [];
 
             foreach ($subtasks as $subtaskData) {
                 if (! empty($subtaskData['title'])) {
                     $estimatedMinutes = ((int) ($subtaskData['estimated_hours'] ?? 0) * 60) + (int) ($subtaskData['estimated_minutes'] ?? 0);
                     $spentMinutes = ((int) ($subtaskData['spent_hours'] ?? 0) * 60) + (int) ($subtaskData['spent_minutes'] ?? 0);
 
-                    $task->subtasks()->create([
-                        'title' => $subtaskData['title'],
-                        'description' => $subtaskData['description'] ?? '',
-                        'is_completed' => !empty($subtaskData['is_completed']) ? 1 : 0,
-                        'estimated_minutes' => $estimatedMinutes,
-                        'spent_minutes' => $spentMinutes,
-                    ]);
+                    if (!empty($subtaskData['id'])) {
+                        // Actualizar existente
+                        $subtask = $task->subtasks()->find($subtaskData['id']);
+                        if ($subtask) {
+                            $subtask->update([
+                                'title' => $subtaskData['title'],
+                                'description' => $subtaskData['description'] ?? '',
+                                'is_completed' => !empty($subtaskData['is_completed']) ? 1 : 0,
+                                'estimated_minutes' => $estimatedMinutes,
+                                'spent_minutes' => $spentMinutes,
+                            ]);
+                            $keptSubtaskIds[] = $subtask->id;
+                        }
+                    } else {
+                        // Crear nueva subtarea
+                        $newSubtask = $task->subtasks()->create([
+                            'title' => $subtaskData['title'],
+                            'description' => $subtaskData['description'] ?? '',
+                            'is_completed' => !empty($subtaskData['is_completed']) ? 1 : 0,
+                            'estimated_minutes' => $estimatedMinutes,
+                            'spent_minutes' => $spentMinutes,
+                        ]);
+                        $keptSubtaskIds[] = $newSubtask->id;
+                    }
                 }
+            }
+
+            // Eliminar las subtareas que fueron borradas en el frontend
+            if ($taskId) {
+                $task->subtasks()->whereNotIn('id', $keptSubtaskIds)->delete();
             }
 
             // Refrescar modelo y relaciones para recalcular progreso
