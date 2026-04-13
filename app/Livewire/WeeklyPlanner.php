@@ -111,7 +111,7 @@ class WeeklyPlanner extends Component
         $task = Task::with('subtasks')->findOrFail($taskId);
         
         // Verificar propiedad
-        if ($task->period->user_id !== auth()->id()) {
+        if ($task->period->user_id != auth()->id()) {
             return;
         }
 
@@ -150,7 +150,7 @@ class WeeklyPlanner extends Component
             $task = Task::findOrFail($taskId);
 
             // Security check: ensure task belongs to the user
-            if ($task->period->user_id !== auth()->id()) {
+            if ($task->period->user_id != auth()->id()) {
                 \Illuminate\Support\Facades\Log::warning("Unauthorized toggle attempt for task {$taskId}");
                 return;
             }
