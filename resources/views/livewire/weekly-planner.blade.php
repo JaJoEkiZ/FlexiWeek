@@ -464,8 +464,15 @@
             inputMins: '',
 
             init() {
-                // Sincronizar con Livewire si hay un re-render que cambia datos subyacentes
                 this.$watch('progress', val => { if(val >= 100) this.markCompleted(); });
+            },
+
+            // Llamada fiable a Livewire en producción (sin depender de magic props)
+            _wireCall(method, ...args) {
+                const el = this.$el.closest('[wire\\:id]');
+                if (!el) return;
+                const comp = Livewire.find(el.getAttribute('wire:id'));
+                if (comp) comp.call(method, ...args);
             },
 
             getActiveSubtask() {
@@ -509,7 +516,7 @@
                     this.statusLabel = 'Pendiente';
                 }
 
-                this.$wire.call('cycleStatus', this.taskId);
+                this._wireCall('cycleStatus', this.taskId);
             },
 
             formatTime(minutes) {
@@ -543,7 +550,7 @@
                         this.markInProgress();
                     }
                     
-                    this.$wire.call('addTime', this.taskId, h, m, this.activeSubtaskId);
+                    this._wireCall('addTime', this.taskId, h, m, this.activeSubtaskId);
                     
                     this.inputHours = '';
                     this.inputMins = '';
@@ -568,7 +575,7 @@
                         }
                     }
 
-                    this.$wire.call('toggleSubtask', this.taskId, st.id);
+                    this._wireCall('toggleSubtask', this.taskId, st.id);
                 }
             }
         }));

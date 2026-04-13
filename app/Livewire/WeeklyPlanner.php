@@ -175,7 +175,6 @@ class WeeklyPlanner extends Component
                     $this->dispatch('toast', message: "Subtarea '{$subtask->title}' {$statusMsg}.", type: 'success');
                 }
 
-                $task->touch(); // Force updated_at change for wire:key
             } else {
                 $this->dispatch('toast', message: "Subtarea {$subtaskId} no encontrada para la tarea {$taskId}.", type: 'error');
             }
