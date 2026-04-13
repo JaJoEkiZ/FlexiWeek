@@ -12,9 +12,9 @@ class Subtask extends Model
     protected $fillable = ['title', 'description', 'is_completed', 'task_id', 'estimated_minutes', 'spent_minutes'];
 
     protected $casts = [
-        'is_completed' => 'boolean',
-        'estimated_minutes' => 'integer',
-        'spent_minutes' => 'integer',
+        'is_completed' => 'integer',
+        'estimated_minutes' => 'decimal:2',
+        'spent_minutes' => 'decimal:2',
     ];
 
     public function task()

@@ -241,8 +241,9 @@ class WeeklyPlanner extends Component
             $subtask = \App\Models\Subtask::find($subtaskId);
 
             if ($subtask) {
-                $subtask->spent_minutes += $minutes;
-                $subtask->save();
+                $subtask->update([
+                    'spent_minutes' => $subtask->spent_minutes + $minutes
+                ]);
 
                 if ($task->progress >= 100 && $task->status !== TaskStatus::Completed) {
                     $task->update(['status' => TaskStatus::Completed]);

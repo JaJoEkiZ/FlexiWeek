@@ -24,8 +24,16 @@
 
     {{-- Sidebar --}}
     <div :class="sidebarOpen ? 'translate-x-0 shadow-xl' : '-translate-x-full'"
-         class="fixed inset-y-0 left-0 z-40 w-64 bg-[#252526] border-r border-[#333] p-4 overflow-y-auto custom-scrollbar transform transition-transform duration-300 ease-in-out">
-        <livewire:components.sidebar :selectedPeriodId="$selectedPeriodId" wire:key="sidebar-main-component" />
+         class="fixed inset-y-0 left-0 z-40 w-64 bg-[#252526] border-r border-[#333] flex flex-col transform transition-transform duration-300 ease-in-out">
+         
+        <div class="flex-1 overflow-y-auto custom-scrollbar p-4">
+            <livewire:components.sidebar :selectedPeriodId="$selectedPeriodId" wire:key="sidebar-main-component" />
+        </div>
+
+        <!-- CronSprint Divider -->
+        <div class="h-1/2 min-h-[320px] shrink-0 border-t border-[#333] flex flex-col bg-[#1e1e1e]">
+            <livewire:components.cron-sprint :periodId="isset($currentPeriod) ? $currentPeriod->id : null" wire:key="cron-sprint-main" />
+        </div>
     </div>
 
     {{-- Contenido principal --}}
