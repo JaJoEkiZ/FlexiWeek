@@ -41,8 +41,10 @@ class CronSprint extends Component
         }
     }
 
+    #[Renderless]
     public function assignTime($taskId, $subtaskId, $minutesDecimal)
     {
+        $minutesDecimal = (float) $minutesDecimal;
         $task = Task::find($taskId);
 
         if (!$task) {
@@ -75,7 +77,7 @@ class CronSprint extends Component
             TaskTimeLog::create([
                 'task_id'       => $taskId,
                 'minutes_spent' => $minutesDecimal,
-                'log_date'      => now(),
+                'log_date'      => now()->toDateString(),
             ]);
 
             $task->refresh(); // Refrescar para que el helper cuente el nuevo log
@@ -84,13 +86,13 @@ class CronSprint extends Component
 
         $this->dispatch('metricsUpdated'); 
         $this->dispatch('taskSaved'); 
-        $this->dispatch('$refresh');
+        // El frontend local (WeeklyPlanner y PeriodMetrics) escuchan estas 2 llamadas y se encargan de refrescarse visualmente solos.
     }
 
     private function updateTaskStatus(Task $task, $successMessage)
     {
-        // Pasar aInProgress si estaba pendiente
-        if ($task->status === TaskStatus::Pending) {
+        // Pasar a InProgress si estaba pendiente o pausada
+        if (in_array($task->status, [TaskStatus::Pending, TaskStatus::Paused])) {
             $task->update(['status' => TaskStatus::InProgress]);
         }
         
@@ -122,7 +124,7 @@ class CronSprint extends Component
         if ($currentPeriod) {
             $tasks = Task::where('period_id', $currentPeriod->id)
                 ->with('subtasks')
-                ->where('status', '!=', TaskStatus::Cancelled)
+                ->whereNotIn('status', [TaskStatus::Cancelled, TaskStatus::Completed])
                 ->orderBy('sort_order', 'asc')
                 ->get();
         }
