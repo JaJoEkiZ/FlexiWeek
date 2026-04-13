@@ -11,6 +11,14 @@
         subtaskId: localStorage.getItem('lastCronSprintSubtaskId') || '',
         clockSize: localStorage.getItem('cronSprintClockSize') || 'md',
         minutesToAssign: 0,
+        tasksData: @js($tasks),
+
+        filteredSubtasks() {
+            if (!this.taskId || !this.tasksData) return [];
+            let task = this.tasksData.find(t => t.id == this.taskId);
+            if (!task || !task.subtasks) return [];
+            return task.subtasks.filter(st => !st.is_completed);
+        },
         
         toggleClockSize() {
             if (this.clockSize === 'sm') { this.clockSize = 'md'; }
@@ -452,14 +460,8 @@
                 <label class="block text-xs text-[#7b7b7b] mb-1">Subtarea (Opcional):</label>
                 <select x-model="subtaskId" class="w-full px-2 py-2 text-sm bg-[#3c3c3c] border border-[#333] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] focus:outline-none">
                     <option value="">-- Ninguna --</option>
-                    <template x-for="task in @js($tasks)" :key="task.id">
-                        <template x-if="task.id == taskId">
-                            <template x-for="st in task.subtasks" :key="st.id">
-                                <template x-if="!st.is_completed">
-                                    <option :value="st.id" x-text="st.title"></option>
-                                </template>
-                            </template>
-                        </template>
+                    <template x-for="st in filteredSubtasks()" :key="st.id">
+                        <option :value="st.id" x-text="st.title"></option>
                     </template>
                 </select>
             </div>
