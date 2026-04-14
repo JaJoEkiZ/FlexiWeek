@@ -1,4 +1,4 @@
-<div class="flex flex-col overflow-hidden"
+<div class="flex flex-col overflow-hidden h-full text-[#d4d4d4]"
      x-data="{
         isCollapsed: localStorage.getItem('cronSprintCollapsed') === 'true',
         mode: 'idle', // 'idle', 'sprint', 'free', 'assigning'
@@ -10,6 +10,9 @@
         taskId: localStorage.getItem('lastCronSprintTaskId') || '',
         subtaskId: localStorage.getItem('lastCronSprintSubtaskId') || '',
         clockSize: localStorage.getItem('cronSprintClockSize') || 'md',
+        alarmSound: localStorage.getItem('cronSprintAlarmSound') || 'End Solo.mp3',
+        alarmVolume: parseInt(localStorage.getItem('cronSprintAlarmVolume')) || 50,
+        currentAudioTest: null,
         minutesToAssign: 0,
         tasksData: @js($tasks),
 
@@ -28,6 +31,16 @@
         },
         
         init() {
+            // Sincronizar tasksData con el DOM al redibujar
+            Livewire.hook('morph.updated', ({ el, component }) => {
+                if (document.getElementById('cron-tasks-data')) {
+                    try {
+                        let parsed = JSON.parse(document.getElementById('cron-tasks-data').innerText);
+                        this.tasksData = parsed;
+                    } catch(e) {}
+                }
+            });
+
             let serverState = @js($timerState);
             
             // Si el backend dictamina un estado oficial de este usuario (ej: viene de volver a loguear o desde otro dispositivo)
@@ -202,7 +215,7 @@
                     this.timeRemaining = Math.max(0, Math.floor((target - Date.now()) / 1000));
                     
                     if (this.timeRemaining <= 0) {
-                        this.playBeep();
+                        this.playAlarm();
                         clearInterval(this.intervalId);
                         this.intervalId = null;
                         this.calculateMinutesAndAssign();
@@ -211,6 +224,39 @@
             }
         },
         
+        playAlarm() {
+            try {
+                // Detener audio previo si está sonando para reiniciar (útil al spamear el test)
+                if (this.currentAudioTest) {
+                    this.currentAudioTest.pause();
+                    this.currentAudioTest.currentTime = 0;
+                }
+
+                // If it's empty, use the browser beep fallback
+                if (!this.alarmSound) {
+                    this.playBeep();
+                    return;
+                }
+                
+                this.currentAudioTest = new Audio('/sounds/' + this.alarmSound);
+                this.currentAudioTest.volume = this.alarmVolume / 100;
+                this.currentAudioTest.play().catch(e => {
+                    console.log('Error reproduciendo sonido, usando fallback', e);
+                    this.playBeep();
+                });
+            } catch(e) {
+                console.log('Audio API falló', e);
+                this.playBeep();
+            }
+        },
+
+        updateVolume() {
+            localStorage.setItem('cronSprintAlarmVolume', this.alarmVolume);
+            if (this.currentAudioTest) {
+                this.currentAudioTest.volume = this.alarmVolume / 100;
+            }
+        },
+
         playBeep() {
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -243,6 +289,13 @@
                 return;
             }
             
+            // Validar que la subtarea realmente corresponda a la tarea seleccionada actualmente
+            // Si el valor es de una sesión vieja (stale) que quedó en la variable, lo limpiamos
+            let currentTask = this.tasksData.find(t => t.id == this.taskId);
+            if (!currentTask || !currentTask.subtasks || !currentTask.subtasks.find(st => st.id == this.subtaskId)) {
+                this.subtaskId = '';
+            }
+            
             localStorage.setItem('lastCronSprintTaskId', this.taskId);
             if (this.subtaskId) {
                 localStorage.setItem('lastCronSprintSubtaskId', this.subtaskId);
@@ -250,8 +303,10 @@
                 localStorage.removeItem('lastCronSprintSubtaskId');
             }
             
-            // Livewire call
+            // Livewire call (se envía totalmente asíncrono en segundo plano)
             $wire.assignTime(this.taskId, this.subtaskId, this.minutesToAssign.toFixed(2));
+            
+            // UI Optimista: Reseteo instantáneo de la interfaz SIN esperar la respuesta del servidor
             this.reset();
         },
 
@@ -306,8 +361,7 @@
             if (this.mode !== 'sprint' || this.sprintTotalSeconds === 0) return 0;
             return ((this.sprintTotalSeconds - this.timeRemaining) / this.sprintTotalSeconds) * 100;
         }
-     }"
-     class="flex flex-col h-full text-[#d4d4d4]">
+     }">
 
     <!-- Header (Vuelve a estar arriba) -->
     <div @click="isCollapsed = !isCollapsed; localStorage.setItem('cronSprintCollapsed', isCollapsed)" 
@@ -382,6 +436,34 @@
                 <span class="text-[10px] uppercase text-[#969696] mb-1">Cronómetro libre</span>
                 <span class="text-lg font-mono tracking-widest">00:00.0</span>
             </button>
+
+            <div class="h-px bg-[#333] my-2 w-full"></div>
+
+            <!-- Ajustes de Alarma -->
+            <div class="space-y-3">
+                <div class="text-[10px] text-[#7b7b7b] uppercase tracking-wider mb-2">Ajustes de Alarma</div>
+                
+                <div class="flex items-center gap-2">
+                    <select x-model="alarmSound" @change="localStorage.setItem('cronSprintAlarmSound', alarmSound)" class="flex-1 px-2 py-1.5 text-xs bg-[#3c3c3c] border border-[#444] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:outline-none">
+                        <option value="">(Sin sonido mp3 - Default)</option>
+                        <option value="End Bells.mp3">End Bells</option>
+                        <option value="End Royal.mp3">End Royal</option>
+                        <option value="End Solo.mp3">End Solo</option>
+                    </select>
+                    
+                    <button @click="playAlarm()" class="px-2 py-1.5 bg-[#4d4d4d] hover:bg-[#555] border border-[#555] rounded text-[#d4d4d4] transition-colors" title="Probar sonido">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M11 19l-7-7H2v-4h2l7-7v18z" />
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-[#7b7b7b]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9m-2.828 9.9M11 19l-7-7H2v-4h2l7-7v18z" /></svg>
+                    <input type="range" min="0" max="100" x-model="alarmVolume" @input="updateVolume()" class="w-full accent-[#007fd4] h-1 bg-[#444] rounded-lg appearance-none cursor-pointer">
+                    <span class="text-[10px] text-[#7b7b7b] w-6 text-right font-mono" x-text="alarmVolume + '%'"></span>
+                </div>
+            </div>
         </div>
 
         <!-- ACTIVE TIMER -->
@@ -452,7 +534,7 @@
             <!-- Selector de Tarea -->
             <div>
                 <label class="block text-xs text-[#7b7b7b] mb-1">Destino del tiempo (Tarea):</label>
-                <select x-model="taskId" class="w-full px-2 py-2 text-sm bg-[#3c3c3c] border border-[#333] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] focus:outline-none">
+                <select x-model="taskId" @change="subtaskId = ''" class="w-full px-2 py-2 text-sm bg-[#3c3c3c] border border-[#333] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] focus:outline-none">
                     <option value="">-- Selecciona una tarea --</option>
                     @foreach($tasks as $task)
                         <option value="{{ $task->id }}">{{ $task->title }}</option>
@@ -461,7 +543,7 @@
             </div>
 
             <!-- Selector de Subtarea -->
-            <div x-show="taskId">
+            <div x-show="taskId && filteredSubtasks().length > 0" x-cloak>
                 <label class="block text-xs text-[#7b7b7b] mb-1">Subtarea (Opcional):</label>
                 <select x-model="subtaskId" class="w-full px-2 py-2 text-sm bg-[#3c3c3c] border border-[#333] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] focus:outline-none">
                     <option value="">-- Ninguna --</option>
@@ -470,6 +552,9 @@
                     </template>
                 </select>
             </div>
+            
+            <!-- Hidden payload to sync Alpine on Livewire morphs -->
+            <div id="cron-tasks-data" class="hidden">@json($tasks)</div>
 
             <div class="flex gap-2 pt-2 border-t border-[#333]">
                 <button type="button" @click="reset()" class="flex-1 py-2 bg-[#3c3c3c] border border-[#555] rounded text-xs font-medium hover:bg-[#4d4d4d] transition-colors">
