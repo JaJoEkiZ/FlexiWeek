@@ -133,6 +133,7 @@
     <livewire:modals.task-details />
     <livewire:modals.duplicate-task />
     <livewire:modals.metrics-task-details />
+    <livewire:modals.reality-check />
 
     {{-- Menú contextual --}}
     <div x-show="ctxMenu.show"

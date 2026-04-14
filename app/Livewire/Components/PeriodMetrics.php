@@ -144,7 +144,7 @@ class PeriodMetrics extends Component
         $completionRate = $activeTotal > 0 ? round(($completed / $activeTotal) * 100) : 0;
 
         $totalSubtasks = $tasks->sum(fn ($t) => $t->subtasks->count());
-        $completedSubtasks = $tasks->sum(fn ($t) => $t->subtasks->where('is_completed', true)->count());
+        $completedSubtasks = $tasks->sum(fn ($t) => $t->subtasks->where('is_completed', 1)->count());
 
         // Determinar si el período ha terminado para mostrar tiempo ganado
         $isPeriodOver = false;

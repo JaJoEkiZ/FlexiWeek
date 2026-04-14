@@ -28,13 +28,13 @@
 
                                     <div>
                                         <label for="title" class="block text-xs font-mono text-[#7b7b7b] mb-1">Nombre de la tarea</label>
-                                        <input type="text" x-model.lazy="draftTask.title" x-on:keydown.enter.prevent="save()" id="title" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3 placeholder-[#666]">
+                                        <input type="text" x-model="draftTask.title" x-on:keydown.enter.prevent="save()" id="title" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3 placeholder-[#666]">
                                         @error('title') <span class="text-[#f14c4c] text-xs font-mono mt-1">{{ $message }}</span> @enderror
                                     </div>
 
                                     <div>
                                         <label for="description" class="block text-xs font-mono text-[#7b7b7b] mb-1">Descripción / Detalles</label>
-                                        <textarea x-model.lazy="draftTask.description" id="description" rows="3" placeholder="Notas, detalles, contexto..." class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3 placeholder-[#666] resize-none"></textarea>
+                                        <textarea x-model="draftTask.description" id="description" rows="3" placeholder="Notas, detalles, contexto..." class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3 placeholder-[#666] resize-none"></textarea>
                                         @error('description') <span class="text-[#f14c4c] text-xs font-mono mt-1">{{ $message }}</span> @enderror
                                     </div>
 
@@ -61,7 +61,7 @@
                                                 <div>
                                                     <label for="hours" class="block text-xs font-mono text-[#7b7b7b] mb-1">Horas</label>
                                                     <input type="number" 
-                                                           x-model.lazy="draftTask.hours" 
+                                                           x-model="draftTask.hours" 
                                                            x-on:keydown.enter.prevent="save()" 
                                                            x-on:focus="$el.select()"
                                                            id="hours" 
@@ -74,7 +74,7 @@
                                                 <div>
                                                     <label for="minutes" class="block text-xs font-mono text-[#7b7b7b] mb-1">Minutos</label>
                                                     <input type="number" 
-                                                           x-model.lazy="draftTask.minutes" 
+                                                           x-model="draftTask.minutes" 
                                                            x-on:keydown.enter.prevent="save()" 
                                                            x-on:focus="$el.select()"
                                                            id="minutes" 
@@ -112,22 +112,22 @@
                                             <div class="space-y-2 p-2 bg-[#2d2d2d] rounded border border-[#3c3c3c]">
                                                 <div class="flex gap-2 items-center">
                                                     <input type="checkbox" x-model="subtask.is_completed" class="rounded bg-[#3c3c3c] border-[#333] text-[#007fd4] focus:ring-0 focus:ring-offset-0">
-                                                    <input type="text" x-model.lazy="subtask.title" placeholder="Título de la subtarea" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3 placeholder-[#666]">
+                                                    <input type="text" x-model="subtask.title" placeholder="Título de la subtarea" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#d4d4d4] focus:border-[#007fd4] focus:ring-[#007fd4] sm:text-sm py-2 px-3 placeholder-[#666]">
                                                     <button type="button" @click="removeSubtask(index)" class="text-[#f14c4c] hover:text-[#c43e3e]">
                                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                                           <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
                                                         </svg>
                                                     </button>
                                                 </div>
-                                                <input type="text" x-model.lazy="subtask.description" placeholder="Detalles de la subtarea (opcional)" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#9d9d9d] focus:border-[#007fd4] focus:ring-[#007fd4] text-xs py-1.5 px-3 placeholder-[#555]">
+                                                <input type="text" x-model="subtask.description" placeholder="Detalles de la subtarea (opcional)" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#9d9d9d] focus:border-[#007fd4] focus:ring-[#007fd4] text-xs py-1.5 px-3 placeholder-[#555]">
                                                 
                                                 {{-- Time Field: Tiempo Estimado --}}
                                                 <div class="flex items-center gap-2 mt-2">
                                                     <label class="text-xs font-mono text-[#5a5a5a]">⏱ Estimado:</label>
                                                     <div class="flex gap-1 items-center">
-                                                        <input type="number" x-model.lazy="subtask.estimated_hours" min="0" placeholder="0" class="w-12 rounded bg-[#3c3c3c] border-[#333] text-[#9d9d9d] focus:border-[#007fd4] focus:ring-[#007fd4] text-xs py-1 px-2 placeholder-[#555]">
+                                                        <input type="number" x-model="subtask.estimated_hours" min="0" placeholder="0" class="w-12 rounded bg-[#3c3c3c] border-[#333] text-[#9d9d9d] focus:border-[#007fd4] focus:ring-[#007fd4] text-xs py-1 px-2 placeholder-[#555]">
                                                         <span class="text-[#5a5a5a] text-xs">h</span>
-                                                        <input type="number" x-model.lazy="subtask.estimated_minutes" min="0" max="59" placeholder="0" class="w-12 rounded bg-[#3c3c3c] border-[#333] text-[#9d9d9d] focus:border-[#007fd4] focus:ring-[#007fd4] text-xs py-1 px-2 placeholder-[#555]">
+                                                        <input type="number" x-model="subtask.estimated_minutes" min="0" max="59" placeholder="0" class="w-12 rounded bg-[#3c3c3c] border-[#333] text-[#9d9d9d] focus:border-[#007fd4] focus:ring-[#007fd4] text-xs py-1 px-2 placeholder-[#555]">
                                                         <span class="text-[#5a5a5a] text-xs">m</span>
                                                     </div>
                                                 </div>

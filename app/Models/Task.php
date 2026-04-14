@@ -78,7 +78,7 @@ class Task extends Model
             }
 
             // Factor 1: Porcentaje de subtareas completadas (50% peso)
-            $completedSubtasks = $this->subtasks->where('is_completed', true)->count();
+            $completedSubtasks = $this->subtasks->where('is_completed', 1)->count();
             $completionRatio = $completedSubtasks / $totalSubtasks;
 
             // Factor 2: Porcentaje de tiempo invertido (50% peso)

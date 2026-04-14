@@ -31,11 +31,12 @@
         },
         
         init() {
-            // Sincronizar tasksData con el DOM al redibujar
-            Livewire.hook('morph.updated', ({ el, component }) => {
-                if (document.getElementById('cron-tasks-data')) {
+            // Sincronizar tasksData con el DOM al redibujar de forma SEGURA y ÚNICA por petición
+            Livewire.hook('commit.handled', ({ component, commit }) => {
+                let el = document.getElementById('cron-tasks-data');
+                if (el) {
                     try {
-                        let parsed = JSON.parse(document.getElementById('cron-tasks-data').innerText);
+                        let parsed = JSON.parse(el.innerText);
                         this.tasksData = parsed;
                     } catch(e) {}
                 }

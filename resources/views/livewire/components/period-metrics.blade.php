@@ -254,8 +254,9 @@
             let lastMetrics = null;
 
             function minutesToHHMM(mins) {
-                const h = Math.floor(mins / 60);
-                const m = mins % 60;
+                const roundedMins = Math.round(mins);
+                const h = Math.floor(roundedMins / 60);
+                const m = roundedMins % 60;
                 return h > 0 ? h + ':' + String(m).padStart(2, '0') : '0:' + String(m).padStart(2, '0');
             }
 
@@ -329,7 +330,7 @@
                             meta.data.forEach((bar, index) => {
                                 const value = dataset.data[index];
                                 if (value === 0 || value === null || value === undefined) return;
-                                const formatted = isHHMM ? minutesToHHMM(value) : value;
+                                const formatted = isHHMM ? minutesToHHMM(value) : Math.round(value);
                                 ctx.save();
                                 ctx.fillStyle = '#d4d4d4';
                                 ctx.font = 'bold 10px monospace';
@@ -367,7 +368,7 @@
                                     color: '#7b7b7b',
                                     font: { size: 10 },
                                     callback: function(value) {
-                                        return isHHMM ? minutesToHHMM(value) : value;
+                                        return isHHMM ? minutesToHHMM(value) : Math.round(value);
                                     }
                                 },
                                 grid: { color: 'rgba(51, 51, 51, 0.5)' },
@@ -383,7 +384,7 @@
                                 callbacks: {
                                     label: function(ctx) {
                                         const val = ctx.parsed.y;
-                                        const formatted = isHHMM ? minutesToHHMM(val) : val + ' min';
+                                        const formatted = isHHMM ? minutesToHHMM(val) : Math.round(val) + ' min';
                                         return ctx.dataset.label + ': ' + formatted;
                                     }
                                 }

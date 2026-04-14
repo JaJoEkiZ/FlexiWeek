@@ -264,6 +264,7 @@ class WeeklyPlanner extends Component
         'taskSaved'      => 'taskSaved',
         'periodSaved'    => '$refresh',
         'periodSelected' => 'selectPeriod',
+        'resumeTaskMove' => 'resumeTaskMove',
     ];
 
     public function taskSaved()
@@ -283,10 +284,30 @@ class WeeklyPlanner extends Component
         }
     }
 
-    public function moveTaskToPeriod($taskId, $newPeriodId)
+    public function moveTaskToPeriod($taskId, $newPeriodId, $skipRealityCheck = false)
     {
         $task        = Task::findOrFail($taskId);
         $oldPeriodId = $task->period_id;
+
+        if ($oldPeriodId != $newPeriodId && !$skipRealityCheck) {
+            $newPeriod = Period::find($newPeriodId);
+            if ($newPeriod) {
+                if (($newPeriod->assigned_minutes + $task->effective_estimated_minutes) > $newPeriod->available_minutes) {
+                    $draftAction = [
+                        'type' => 'move_task',
+                        'taskId' => $taskId,
+                        'newPeriodId' => $newPeriodId,
+                        'title' => $task->title,
+                        'completion_method' => $task->completion_method,
+                        'effective_minutes' => $task->effective_estimated_minutes,
+                    ];
+                    $this->dispatch('openRealityCheck', periodId: $newPeriodId, draftAction: $draftAction);
+                    $this->dispatch('$refresh');
+                    return; 
+                }
+            }
+        }
+
         $maxOrder    = Task::where('period_id', $newPeriodId)->max('sort_order') ?? 0;
 
         $task->update([
@@ -295,6 +316,12 @@ class WeeklyPlanner extends Component
         ]);
 
         $this->reorderPeriodTasks($oldPeriodId);
+    }
+
+    public function resumeTaskMove($taskId, $newPeriodId)
+    {
+        $this->moveTaskToPeriod($taskId, $newPeriodId, true);
+        $this->dispatch('$refresh');
     }
 
     private function reorderPeriodTasks($periodId)

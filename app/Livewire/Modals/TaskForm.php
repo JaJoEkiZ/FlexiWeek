@@ -28,7 +28,7 @@ class TaskForm extends Component
     // Computed properties for view
     public $periods = [];
 
-    protected $listeners = ['openTaskForm'];
+    protected $listeners = ['openTaskForm', 'resumeTaskFormSave'];
 
     public $completionMethod = 'time'; // 'time' por defecto
 
@@ -157,6 +157,44 @@ class TaskForm extends Component
                 return;
             }
 
+            // Realismo: Evaluación de Límite de Productividad "Mark Fisher"
+            $subtasksTotalMinutes = 0;
+            foreach ($subtasks as $subtaskData) {
+                if (! empty($subtaskData['title'])) {
+                    $subtasksTotalMinutes += ((int) ($subtaskData['estimated_hours'] ?? 0) * 60) + (int) ($subtaskData['estimated_minutes'] ?? 0);
+                }
+            }
+            $newTaskEffectiveMinutes = $totalMinutes + $subtasksTotalMinutes;
+
+            $periodToSave = Period::find($draftTask['periodId']);
+            if ($periodToSave && empty($draftTask['skip_reality_check'])) {
+                $currentAssigned = $periodToSave->assigned_minutes;
+                $oldMinutesForTask = 0;
+                
+                // Si estamos editando, restar para evitar que ocupe doble temporalmente
+                if ($taskId) {
+                    $existingTask = Task::find($taskId);
+                    if ($existingTask) {
+                        $oldMinutesForTask = $existingTask->effective_estimated_minutes;
+                        $currentAssigned -= $oldMinutesForTask;
+                    }
+                }
+
+                if (($currentAssigned + $newTaskEffectiveMinutes) > $periodToSave->available_minutes) {
+                    $draftAction = [
+                        'type' => $taskId ? 'edit_task' : 'create_task',
+                        'payload' => $draftTask,
+                        'title' => $draftTask['title'],
+                        'completion_method' => $completionMethod,
+                        'effective_minutes' => $newTaskEffectiveMinutes,
+                        'old_minutes' => $oldMinutesForTask,
+                    ];
+                    $this->dispatch('openRealityCheck', periodId: $periodToSave->id, draftAction: $draftAction);
+                    $this->isOpen = false;
+                    return;
+                }
+            }
+
             if ($taskId) {
                 $task = Task::findOrFail($taskId);
                 $task->update([
@@ -227,7 +265,7 @@ class TaskForm extends Component
 
             if ($completionMethod === 'subtasks' && $task->subtasks()->count() > 0) {
                 $total = $task->subtasks()->count();
-                $completed = $task->subtasks()->where('is_completed', true)->count();
+                $completed = $task->subtasks()->where('is_completed', 1)->count();
 
                 if ($total === $completed) {
                     $task->update(['status' => TaskStatus::Completed]);
@@ -259,6 +297,13 @@ class TaskForm extends Component
     {
         $this->isOpen = false;
         $this->reset(['taskId', 'title', 'hours', 'minutes', 'periodId', 'isPersistent']);
+    }
+
+    public function resumeTaskFormSave($draftTask)
+    {
+        $draftTask['skip_reality_check'] = true;
+        // Restaurar estado base si la modal de TaskForm estaba limpia
+        $this->saveTask($draftTask);
     }
 
     public function render()
