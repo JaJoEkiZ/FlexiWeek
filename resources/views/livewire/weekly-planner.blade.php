@@ -659,10 +659,13 @@
                 });
             });
 
-            // Limpieza general de clases al soltar
-            document.addEventListener('mouseup', function() {
-                periodDropZones.forEach(z => z.classList.remove('drag-over-zone'));
-            });
+            // Limpieza general de clases al soltar (Registro seguro en objeto global para evitar leaks)
+            if (!window.hasGlobalMouseUp) {
+                document.addEventListener('mouseup', function() {
+                    document.querySelectorAll('.period-drop-zone').forEach(z => z.classList.remove('drag-over-zone'));
+                });
+                window.hasGlobalMouseUp = true;
+            }
         }
     </script>
     @endscript
