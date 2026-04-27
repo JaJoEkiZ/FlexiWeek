@@ -406,9 +406,10 @@
                     {{ $tasks->links() }}
                 </div>
     <style>
-        .custom-scrollbar::-webkit-scrollbar { width: 10px; background-color: #1e1e1e; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #424242; border-radius: 5px; border: 2px solid #1e1e1e; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #4f4f4f; }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; background-color: #1e1e1e; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #4f4f4f; border-radius: 4px; border: 1px solid #1e1e1e; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #6a6a6a; }
+        .custom-scrollbar::-webkit-scrollbar-track { background-color: #252526; border-radius: 4px; }
         
         /* SortableJS Styles */
         .sortable-ghost { opacity: 0.5 !important; background-color: #1a1a1a !important; }

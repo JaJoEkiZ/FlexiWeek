@@ -13,13 +13,19 @@
     style="width:100%; height:100%; position:relative; overflow:hidden; background:#1e1e1e; font-family: inherit;"
     @mousemove.window="onMousemove($event)"
     @mouseup.window="onMouseup($event)"
+    @touchmove.window.passive="onTouchmove($event)"
+    @touchend.window="onTouchend($event)"
 >
 
     {{-- ═══════════════════════════════════════════
          ESTILOS (scoped con .pizarra-root)
     ═══════════════════════════════════════════ --}}
     <style>
-        .pizarra-root { user-select: none; }
+        .pizarra-root { user-select: none; touch-action: none; }
+        /* En dispositivos táctiles, las acciones de item siempre visibles (no hay hover) */
+        @media (hover: none) {
+            .pizarra-root .pz-item-actions { opacity: 1; }
+        }
         .pizarra-root.is-dragging, .pizarra-root.is-panning { cursor: grabbing !important; }
         .pizarra-root.is-dragging *, .pizarra-root.is-panning * { cursor: grabbing !important; }
         .pizarra-root.is-selecting { cursor: crosshair !important; }
@@ -286,6 +292,7 @@
         @wheel.prevent="onWheel($event)"
         @dblclick="onCanvasDblclick($event)"
         @contextmenu.prevent=""
+        @touchstart.passive="onCanvasTouchstart($event)"
     >
         {{-- Grid de fondo --}}
         <defs>
@@ -355,6 +362,7 @@
                 @dblclick.stop="openPanel(item)"
                 @contextmenu.prevent="onItemRightclick($event, item)"
                 @click.stop="onItemClick($event, item)"
+                @touchstart.stop.passive="onItemTouchstart($event, item)"
             >
                 {{-- Header --}}
                 <div class="pz-item-header">
@@ -710,7 +718,10 @@
     </div>
 
     {{-- HINT --}}
-    <div class="pz-hint">doble click para crear · click derecho para opciones · click scroll para moverse · scroll para zoom</div>
+    <div class="pz-hint" x-text="_isTouchDevice
+        ? 'mantener para opciones · doble tap para editar · tap largo en canvas para crear · pellizco para zoom'
+        : 'doble click para crear · click derecho para opciones · click scroll para moverse · scroll para zoom'
+    "></div>
 
     {{-- ═══════════════════════════════════════════
          ALPINE COMPONENT
@@ -770,6 +781,16 @@
         // Colores disponibles
         colors: ['#007fd4','#569cd6','#8B5CF6','#EC4899','#4ec9b0','#F59E0B','#f85149','#06B6D4','#b5cea8','#6a9955'],
 
+        // Estado touch
+        _touchStartTime: 0,
+        _touchStartPos: null,
+        _lastTapTime: 0,
+        _lastTapItem: null,
+        _longPressTimer: null,
+        _pinchStartDist: 0,
+        _pinchStartScale: 1,
+        _isTouchDevice: false,
+
         // ─── INIT ───────────────────────────────
         init() {
             document.addEventListener('keydown', (e) => {
@@ -804,6 +825,135 @@
                     }
                 }
             });
+
+            // ─── TOUCH SUPPORT ───────────────────────────────────────────────
+            // Detectar si el dispositivo tiene touch
+            this._isTouchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+        },
+
+        // Convierte un objeto Touch en un fake MouseEvent con las propiedades necesarias
+        _touchToMouse(touch, button = 0) {
+            return { clientX: touch.clientX, clientY: touch.clientY, button, stopPropagation() {} };
+        },
+
+        // ─── CANVAS TOUCH ────────────────────────────────────────────────────
+        onCanvasTouchstart(e) {
+            if (e.touches.length === 2) {
+                // Pellizco: iniciar zoom
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                this._pinchStartDist = Math.hypot(dx, dy);
+                this._pinchStartScale = this.scale;
+                return;
+            }
+            if (e.touches.length !== 1) return;
+
+            const t = e.touches[0];
+            this._touchStartTime = Date.now();
+            this._touchStartPos = { x: t.clientX, y: t.clientY };
+            this._lastTapItem = null;
+
+            // Pan con 1 dedo en el canvas (equivale a botón medio)
+            this.contextMenu.visible = false;
+            this.isPanning = true;
+            this.panStart = { x: t.clientX - this.panX, y: t.clientY - this.panY };
+
+            // Long-press en canvas vacío → doble tap (crear caja)
+            clearTimeout(this._longPressTimer);
+            this._longPressTimer = setTimeout(() => {
+                if (this.isPanning && !this.dragging) {
+                    const fakeEvent = {
+                        currentTarget: document.getElementById('pizarra-canvas'),
+                        clientX: this._touchStartPos.x,
+                        clientY: this._touchStartPos.y,
+                    };
+                    this.onCanvasDblclick(fakeEvent);
+                }
+            }, 600);
+        },
+
+        // ─── ITEM TOUCH ──────────────────────────────────────────────────────
+        onItemTouchstart(e, item) {
+            if (e.touches.length !== 1) return;
+            const t = e.touches[0];
+            const now = Date.now();
+
+            // Cancelar long-press anterior
+            clearTimeout(this._longPressTimer);
+            // Cancelar pan del canvas (el touch está sobre un item)
+            this.isPanning = false;
+
+            // Doble tap: dos taps en el mismo item en < 350ms → abrir panel
+            if (this._lastTapItem === item.id && (now - this._lastTapTime) < 350) {
+                this._lastTapTime = 0;
+                this._lastTapItem = null;
+                this.openPanel(item);
+                return;
+            }
+            this._lastTapTime = now;
+            this._lastTapItem = item.id;
+
+            // Long-press → menú contextual
+            this._longPressTimer = setTimeout(() => {
+                if (!this.hasDragged) {
+                    // Vibración haptic si el dispositivo lo soporta
+                    if (navigator.vibrate) navigator.vibrate(30);
+                    this.onItemRightclick({ clientX: t.clientX, clientY: t.clientY }, item);
+                }
+            }, 500);
+
+            // Iniciar drag como mousedown
+            const fakeEvent = this._touchToMouse(t);
+            this.onItemMousedown(fakeEvent, item);
+        },
+
+        // ─── GLOBAL TOUCH MOVE ───────────────────────────────────────────────
+        onTouchmove(e) {
+            if (e.touches.length === 2) {
+                // Pellizco en curso → zoom
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const dist = Math.hypot(dx, dy);
+                if (this._pinchStartDist > 0) {
+                    const ratio = dist / this._pinchStartDist;
+                    const newScale = Math.min(2, Math.max(0.2, this._pinchStartScale * ratio));
+                    const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                    const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                    this.panX = cx - (cx - this.panX) * (newScale / this.scale);
+                    this.panY = cy - (cy - this.panY) * (newScale / this.scale);
+                    this.scale = newScale;
+                }
+                return;
+            }
+            if (e.touches.length !== 1) return;
+
+            const t = e.touches[0];
+
+            // Si se movió más de 8px, cancelar el long-press (no es tap)
+            if (this._touchStartPos) {
+                const moved = Math.hypot(
+                    t.clientX - this._touchStartPos.x,
+                    t.clientY - this._touchStartPos.y
+                );
+                if (moved > 8) {
+                    clearTimeout(this._longPressTimer);
+                    this._longPressTimer = null;
+                }
+            }
+
+            const fakeEvent = this._touchToMouse(t);
+            this.onMousemove(fakeEvent);
+        },
+
+        // ─── GLOBAL TOUCH END ────────────────────────────────────────────────
+        onTouchend(e) {
+            clearTimeout(this._longPressTimer);
+            this._longPressTimer = null;
+            this._pinchStartDist = 0;
+
+            const touch = e.changedTouches[0];
+            const fakeEvent = touch ? this._touchToMouse(touch) : { clientX: 0, clientY: 0, button: 0, stopPropagation() {} };
+            this.onMouseup(fakeEvent);
         },
 
         // ─── COMPUTED ────────────────────────────

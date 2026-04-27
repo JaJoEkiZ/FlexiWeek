@@ -14,6 +14,9 @@
         alarmVolume: parseInt(localStorage.getItem('cronSprintAlarmVolume')) || 50,
         currentAudioTest: null,
         minutesToAssign: 0,
+        swRegistration: null,
+        alarmChannel: null,
+        _baseTitle: document.title,
         tasksData: @js($tasks),
 
         filteredSubtasks() {
@@ -31,7 +34,7 @@
         },
         
         init() {
-            // Sincronizar tasksData con el DOM al redibujar de forma SEGURA y ÚNICA por petición
+            // ── Sincronizar tasksData con Livewire morphs ──
             Livewire.hook('commit.handled', ({ component, commit }) => {
                 let el = document.getElementById('cron-tasks-data');
                 if (el) {
@@ -39,6 +42,60 @@
                         let parsed = JSON.parse(el.innerText);
                         this.tasksData = parsed;
                     } catch(e) {}
+                }
+            });
+
+            // ── Service Worker para alarmas en background ──
+            const self = this;
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/sw-alarm.js', { scope: '/' })
+                    .then(reg => {
+                        self.swRegistration = reg;
+                    })
+                    .catch(err => console.warn('CronSprint SW no registrado:', err));
+
+                // Escuchar mensajes directos del SW (complementario al BroadcastChannel)
+                navigator.serviceWorker.addEventListener('message', (event) => {
+                    if (event.data?.type === 'ALARM_FIRED') {
+                        self._handleAlarmFired();
+                    }
+                });
+
+                // Cuando el SW pasa a controlar la página por primera vez (primera carga),
+                // controller es null hasta que se activa. Re-enviamos la alarma si hay un sprint activo.
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (self.mode === 'sprint' && localStorage.getItem('cronSprint_isPaused') !== 'true') {
+                        const ts = parseInt(localStorage.getItem('cronSprint_targetTs') || 0);
+                        if (ts > 0) self.swSetAlarm(ts);
+                    }
+                });
+            }
+
+            // ── BroadcastChannel: recibir ALARM_FIRED aunque la pestaña esté oculta ──
+            if ('BroadcastChannel' in window) {
+                this.alarmChannel = new BroadcastChannel('cron-sprint-alarm');
+                this.alarmChannel.onmessage = (event) => {
+                    if (event.data?.type === 'ALARM_FIRED') {
+                        self._handleAlarmFired();
+                    }
+                };
+            }
+
+            // ── Pedir permiso de notificaciones (una sola vez, silencioso) ──
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission().catch(() => {});
+            }
+
+            // ── visibilitychange: detectar alarmas perdidas al volver a la pestaña ──
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible' && self.mode === 'sprint') {
+                    let target = parseInt(localStorage.getItem('cronSprint_targetTs') || 0);
+                    if (target > 0 && Date.now() >= target) {
+                        // La alarma debió haber disparado mientras estaba en background
+                        clearInterval(self.intervalId);
+                        self.intervalId = null;
+                        self._handleAlarmFired();
+                    }
                 }
             });
 
@@ -79,6 +136,10 @@
                 }
                 
                 if (!isPaused && this.timeRemaining > 0) {
+                    // Re-registrar alarma en el SW al restaurar el estado (puede que el SW ya esté activo
+                    // o que el controllerchange lo haga después — cubrimos ambos casos)
+                    const savedTarget = parseInt(localStorage.getItem('cronSprint_targetTs') || 0);
+                    if (savedTarget > 0) this.swSetAlarm(savedTarget);
                     this.startInterval();
                 } else if (!isPaused && this.timeRemaining <= 0) {
                     this.calculateMinutesAndAssign();
@@ -114,18 +175,44 @@
             });
         },
 
+        // ── Comunicación con el SW de alarma ──
+        swSetAlarm(targetTs) {
+            if (!navigator.serviceWorker?.controller) return;
+            navigator.serviceWorker.controller.postMessage({ type: 'SET_ALARM', targetTs });
+        },
+
+        swCancelAlarm() {
+            if (!navigator.serviceWorker?.controller) return;
+            navigator.serviceWorker.controller.postMessage({ type: 'CANCEL_ALARM' });
+        },
+
+        // ── Handler central cuando la alarma dispara (desde SW, BC o visibilitychange) ──
+        _handleAlarmFired() {
+            // Evitar doble ejecución si el setInterval ya lo procesó
+            if (this.mode !== 'sprint') return;
+            this.playAlarm();
+            clearInterval(this.intervalId);
+            this.intervalId = null;
+            this.timeRemaining = 0;
+            this.calculateMinutesAndAssign();
+        },
+
         startSprint(minutes, seconds) {
             this.mode = 'sprint';
             this.activeSprint = `${minutes}:${seconds}`;
             this.sprintTotalSeconds = (minutes * 60) + seconds;
             this.timeRemaining = this.sprintTotalSeconds;
-            
+
+            const targetTs = Date.now() + (this.sprintTotalSeconds * 1000);
             localStorage.setItem('cronSprint_mode', 'sprint');
             localStorage.setItem('cronSprint_activeSprint', this.activeSprint);
             localStorage.setItem('cronSprint_totalSeconds', this.sprintTotalSeconds);
-            localStorage.setItem('cronSprint_targetTs', Date.now() + (this.sprintTotalSeconds * 1000));
+            localStorage.setItem('cronSprint_targetTs', targetTs);
             localStorage.removeItem('cronSprint_isPaused');
-            
+
+            // Registrar alarma en el SW (funciona aunque la pestaña esté en background)
+            this.swSetAlarm(targetTs);
+
             this.syncState();
             this.startInterval();
         },
@@ -148,6 +235,8 @@
                 localStorage.setItem('cronSprint_pausedTimeElapsed', this.timeElapsed);
             } else if (this.mode === 'sprint') {
                 localStorage.setItem('cronSprint_pausedTimeRemaining', this.timeRemaining);
+                // Cancelar la alarma del SW mientras el timer está pausado
+                this.swCancelAlarm();
             }
             this.syncState();
         },
@@ -157,7 +246,10 @@
             if (this.mode === 'free') {
                 localStorage.setItem('cronSprint_startTs', Date.now() - (this.timeElapsed * 100));
             } else if (this.mode === 'sprint') {
-                localStorage.setItem('cronSprint_targetTs', Date.now() + (this.timeRemaining * 1000));
+                const targetTs = Date.now() + (this.timeRemaining * 1000);
+                localStorage.setItem('cronSprint_targetTs', targetTs);
+                // Re-registrar alarma en el SW con el nuevo timestamp
+                this.swSetAlarm(targetTs);
             }
             this.syncState();
             this.startInterval();
@@ -194,7 +286,10 @@
             this.mode = 'assigning';
             localStorage.setItem('cronSprint_mode', 'assigning');
             localStorage.setItem('cronSprint_minutesToAssign', this.minutesToAssign);
-            
+
+            // Restaurar título al terminar el sprint
+            document.title = this._baseTitle;
+
             // Auto-expand panel when assigning time so it isn't hidden from the user
             this.isCollapsed = false;
             localStorage.setItem('cronSprintCollapsed', 'false');
@@ -204,24 +299,25 @@
         
         startInterval() {
             if (this.intervalId) return;
-            
+
             if (this.mode === 'free') {
                 this.intervalId = setInterval(() => {
                     let start = parseInt(localStorage.getItem('cronSprint_startTs') || Date.now());
                     this.timeElapsed = Math.floor((Date.now() - start) / 100);
+                    document.title = 'FlexiWeek - ' + this.formatFreeTime(this.timeElapsed);
                 }, 100);
             } else if (this.mode === 'sprint') {
                 this.intervalId = setInterval(() => {
                     let target = parseInt(localStorage.getItem('cronSprint_targetTs') || Date.now());
                     this.timeRemaining = Math.max(0, Math.floor((target - Date.now()) / 1000));
-                    
-                    if (this.timeRemaining <= 0) {
-                        this.playAlarm();
-                        clearInterval(this.intervalId);
-                        this.intervalId = null;
-                        this.calculateMinutesAndAssign();
+                    document.title = 'FlexiWeek - ' + this.formatSprintTime(this.timeRemaining);
+
+                    // El SW es el responsable principal de disparar la alarma;
+                    // este setInterval actúa como fallback por si el SW no está disponible.
+                    if (this.timeRemaining <= 0 && this.mode === 'sprint') {
+                        this._handleAlarmFired();
                     }
-                }, 500); // Verificamos cada medio segundo para máxima precisión sin sobrecargar
+                }, 500);
             }
         },
         
@@ -317,9 +413,15 @@
             this.activeSprint = null;
             this.timeRemaining = 0;
             this.timeElapsed = 0;
-            if(this.intervalId) clearInterval(this.intervalId);
+            if (this.intervalId) clearInterval(this.intervalId);
             this.intervalId = null;
-            
+
+            // Restaurar título original
+            document.title = this._baseTitle;
+
+            // Cancelar alarma en el SW
+            this.swCancelAlarm();
+
             // Limpieza total del storage local
             localStorage.removeItem('cronSprint_mode');
             localStorage.removeItem('cronSprint_activeSprint');
@@ -381,7 +483,7 @@
                     'text-[#007fd4]': mode === 'sprint' && activeSprint === '33:33',
                     'text-[#4ec9b0]': mode === 'sprint' && activeSprint === '22:22',
                     'text-[#ce9178]': mode === 'sprint' && activeSprint === '15:15',
-                    'text-[#d2a8ff]': mode === 'sprint' && activeSprint === '6:36',
+                    'text-[#d2a8ff]': mode === 'sprint' && activeSprint === '6:39',
                     'text-[#d4d4d4]': mode === 'free'
                  }">
                 <span x-text="displayTime"></span>
@@ -400,7 +502,7 @@
          x-transition:leave="transition-all duration-300 ease-in"
          x-transition:leave-start="opacity-100 translate-y-0"
          x-transition:leave-end="opacity-0 -translate-y-4">
-        <div class="overflow-y-auto custom-scrollbar p-3 md:p-4 bg-[#1e1e1e] flex flex-col gap-4 max-h-[400px]">
+        <div class="overflow-y-auto custom-scrollbar p-3 md:p-4 bg-[#1e1e1e] flex flex-col gap-4" style="max-height: clamp(260px, 45vh, 520px);">
 
         <!-- IDLE START -->
         <div x-show="mode === 'idle'" class="space-y-4">
@@ -423,10 +525,10 @@
                     <span class="text-[10px] font-medium uppercase opacity-70 group-hover:opacity-100 transition-opacity">Sprint S</span>
                     <span class="font-mono text-sm font-bold">15:15</span>
                 </button>
-                <!-- 6:36 -->
-                <button @click="startSprint(6, 36)" class="bg-[#3c3c3c] bg-opacity-50 border border-[#444] hover:border-[#d2a8ff] hover:text-[#d2a8ff] text-[#8b949e] transition-all rounded p-2 text-center flex flex-col items-center group shadow-sm">
+                <!-- 6:39 -->
+                <button @click="startSprint(6, 39)" class="bg-[#3c3c3c] bg-opacity-50 border border-[#444] hover:border-[#d2a8ff] hover:text-[#d2a8ff] text-[#8b949e] transition-all rounded p-2 text-center flex flex-col items-center group shadow-sm">
                     <span class="text-[10px] font-medium uppercase opacity-70 group-hover:opacity-100 transition-opacity">Sprint XS</span>
-                    <span class="font-mono text-sm font-bold">06:36</span>
+                    <span class="font-mono text-sm font-bold">06:39</span>
                 </button>
             </div>
 
@@ -443,26 +545,41 @@
             <!-- Ajustes de Alarma -->
             <div class="space-y-3">
                 <div class="text-[10px] text-[#7b7b7b] uppercase tracking-wider mb-2">Ajustes de Alarma</div>
-                
-                <div class="flex items-center gap-2">
-                    <select x-model="alarmSound" @change="localStorage.setItem('cronSprintAlarmSound', alarmSound)" class="flex-1 px-2 py-1.5 text-xs bg-[#3c3c3c] border border-[#444] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:outline-none">
-                        <option value="">(Sin sonido mp3 - Default)</option>
+
+                <!-- Fila 1: Selector de sonido + botón test -->
+                <div class="flex items-stretch gap-2">
+                    <select x-model="alarmSound"
+                            @change="localStorage.setItem('cronSprintAlarmSound', alarmSound)"
+                            class="flex-1 min-w-0 px-2 py-1.5 text-xs bg-[#3c3c3c] border border-[#444] rounded text-[#d4d4d4] focus:border-[#007fd4] focus:outline-none truncate">
+                        <option value="">(Sin sonido – Beep)</option>
                         <option value="End Bells.mp3">End Bells</option>
                         <option value="End Royal.mp3">End Royal</option>
                         <option value="End Solo.mp3">End Solo</option>
                     </select>
-                    
-                    <button @click="playAlarm()" class="px-2 py-1.5 bg-[#4d4d4d] hover:bg-[#555] border border-[#555] rounded text-[#d4d4d4] transition-colors" title="Probar sonido">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+
+                    <button @click="playAlarm()"
+                            class="flex-shrink-0 flex items-center justify-center px-2.5 py-1.5 bg-[#4d4d4d] hover:bg-[#555] border border-[#555] rounded text-[#d4d4d4] transition-colors"
+                            title="Probar sonido">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M11 19l-7-7H2v-4h2l7-7v18z" />
                         </svg>
                     </button>
                 </div>
-                
+
+                <!-- Fila 2: Volumen -->
                 <div class="flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-[#7b7b7b]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9m-2.828 9.9M11 19l-7-7H2v-4h2l7-7v18z" /></svg>
-                    <input type="range" min="0" max="100" x-model="alarmVolume" @input="updateVolume()" class="w-full accent-[#007fd4] h-1 bg-[#444] rounded-lg appearance-none cursor-pointer">
-                    <span class="text-[10px] text-[#7b7b7b] w-6 text-right font-mono" x-text="alarmVolume + '%'"></span>
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         class="h-3.5 w-3.5 flex-shrink-0 text-[#7b7b7b]"
+                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M11 19l-7-7H2v-4h2l7-7v18z" />
+                    </svg>
+                    <input type="range" min="0" max="100"
+                           x-model="alarmVolume"
+                           @input="updateVolume()"
+                           class="flex-1 min-w-0 accent-[#007fd4] h-1.5 bg-[#444] rounded-lg appearance-none cursor-pointer">
+                    <span class="flex-shrink-0 text-[10px] text-[#7b7b7b] w-8 text-right font-mono"
+                          x-text="alarmVolume + '%'"></span>
                 </div>
             </div>
         </div>
@@ -485,7 +602,7 @@
                     'text-[#007fd4]': mode === 'sprint' && activeSprint === '33:33',
                     'text-[#4ec9b0]': mode === 'sprint' && activeSprint === '22:22',
                     'text-[#ce9178]': mode === 'sprint' && activeSprint === '15:15',
-                    'text-[#d2a8ff]': mode === 'sprint' && activeSprint === '6:36',
+                    'text-[#d2a8ff]': mode === 'sprint' && activeSprint === '6:39',
                     'text-[#d4d4d4]': mode === 'free'
                  }"
                  x-text="displayTime">
@@ -505,7 +622,7 @@
                         'text-[#007fd4]': mode === 'sprint' && activeSprint === '33:33',
                         'text-[#4ec9b0]': mode === 'sprint' && activeSprint === '22:22',
                         'text-[#ce9178]': mode === 'sprint' && activeSprint === '15:15',
-                        'text-[#d2a8ff]': mode === 'sprint' && activeSprint === '6:36'
+                        'text-[#d2a8ff]': mode === 'sprint' && activeSprint === '6:39'
                      }"></div>
             </div>
 
