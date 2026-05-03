@@ -209,11 +209,11 @@ class WeeklyPlanner extends Component
                 'log_date'      => now(),
             ]);
 
-            if ($task->progress >= 100 && $task->status !== TaskStatus::Completed) {
+            if ($task->completion_method === 'time' && $task->progress >= 100 && $task->status !== TaskStatus::Completed) {
                 $task->update(['status' => TaskStatus::Completed]);
                 $this->dispatch('toast', message: "¡Tarea completada! Se cargaron {$minutes} minutos.", type: 'success');
             } else {
-                if ($task->status === TaskStatus::Pending) {
+                if (in_array($task->status, [TaskStatus::Pending, TaskStatus::Paused])) {
                     $task->update(['status' => TaskStatus::InProgress]);
                 }
                 $this->dispatch('toast', message: "¡Se cargaron {$minutes} minutos!", type: 'success');
@@ -245,11 +245,11 @@ class WeeklyPlanner extends Component
                     'spent_minutes' => $subtask->spent_minutes + $minutes
                 ]);
 
-                if ($task->progress >= 100 && $task->status !== TaskStatus::Completed) {
+                if ($task->completion_method === 'time' && $task->progress >= 100 && $task->status !== TaskStatus::Completed) {
                     $task->update(['status' => TaskStatus::Completed]);
                     $this->dispatch('toast', message: "¡Tarea completada! Se cargaron {$minutes} minutos a '{$subtask->title}'.", type: 'success');
                 } else {
-                    if ($task->status === TaskStatus::Pending) {
+                    if (in_array($task->status, [TaskStatus::Pending, TaskStatus::Paused])) {
                         $task->update(['status' => TaskStatus::InProgress]);
                     }
                     $this->dispatch('toast', message: "¡Se cargaron {$minutes} minutos a '{$subtask->title}'!", type: 'success');
