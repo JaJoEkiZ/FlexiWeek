@@ -16,6 +16,9 @@
         minutesToAssign: 0,
         swRegistration: null,
         alarmChannel: null,
+        audioCtx: null,
+        alarmAudioBuffer: null,
+        keepaliveId: null,
         _baseTitle: document.title,
         tasksData: @js($tasks),
 
@@ -51,6 +54,8 @@
                 navigator.serviceWorker.register('/sw-alarm.js', { scope: '/' })
                     .then(reg => {
                         self.swRegistration = reg;
+                        // Force update to pick up new SW code
+                        reg.update().catch(() => {});
                     })
                     .catch(err => console.warn('CronSprint SW no registrado:', err));
 
@@ -140,6 +145,9 @@
                     // o que el controllerchange lo haga después — cubrimos ambos casos)
                     const savedTarget = parseInt(localStorage.getItem('cronSprint_targetTs') || 0);
                     if (savedTarget > 0) this.swSetAlarm(savedTarget);
+                    // Pre-cargar buffer y keepalive para soporte en background
+                    this.preloadAlarmBuffer();
+                    this.startKeepalive();
                     this.startInterval();
                 } else if (!isPaused && this.timeRemaining <= 0) {
                     this.calculateMinutesAndAssign();
@@ -173,6 +181,38 @@
                 pausedTimeElapsed: this.timeElapsed,
                 minutesToAssign: this.minutesToAssign
             });
+        },
+
+        // ── Pre-carga del audio de alarma como buffer (funciona en pestañas de fondo) ──
+        preloadAlarmBuffer() {
+            if (!this.alarmSound) return; // sin sonido = usa beep
+            try {
+                if (!this.audioCtx) {
+                    this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                fetch('/sounds/' + this.alarmSound)
+                    .then(r => r.arrayBuffer())
+                    .then(buf => this.audioCtx.decodeAudioData(buf))
+                    .then(decoded => { this.alarmAudioBuffer = decoded; })
+                    .catch(() => { this.alarmAudioBuffer = null; });
+            } catch(e) { this.alarmAudioBuffer = null; }
+        },
+
+        // ── Keepalive: pings periódicos al SW para que Chrome no lo mate ──
+        startKeepalive() {
+            this.stopKeepalive();
+            this.keepaliveId = setInterval(() => {
+                if (navigator.serviceWorker?.controller) {
+                    navigator.serviceWorker.controller.postMessage({ type: 'KEEPALIVE' });
+                }
+            }, 20000); // cada 20s
+        },
+
+        stopKeepalive() {
+            if (this.keepaliveId) {
+                clearInterval(this.keepaliveId);
+                this.keepaliveId = null;
+            }
         },
 
         // ── Comunicación con el SW de alarma ──
@@ -210,8 +250,14 @@
             localStorage.setItem('cronSprint_targetTs', targetTs);
             localStorage.removeItem('cronSprint_isPaused');
 
+            // Pre-cargar el audio como buffer (contexto de interacción de usuario)
+            this.preloadAlarmBuffer();
+
             // Registrar alarma en el SW (funciona aunque la pestaña esté en background)
             this.swSetAlarm(targetTs);
+
+            // Keepalive para que Chrome no mate el SW
+            this.startKeepalive();
 
             this.syncState();
             this.startInterval();
@@ -237,6 +283,7 @@
                 localStorage.setItem('cronSprint_pausedTimeRemaining', this.timeRemaining);
                 // Cancelar la alarma del SW mientras el timer está pausado
                 this.swCancelAlarm();
+                this.stopKeepalive();
             }
             this.syncState();
         },
@@ -250,6 +297,9 @@
                 localStorage.setItem('cronSprint_targetTs', targetTs);
                 // Re-registrar alarma en el SW con el nuevo timestamp
                 this.swSetAlarm(targetTs);
+                // Re-cargar buffer y keepalive
+                this.preloadAlarmBuffer();
+                this.startKeepalive();
             }
             this.syncState();
             this.startInterval();
@@ -323,7 +373,7 @@
         
         playAlarm() {
             try {
-                // Detener audio previo si está sonando para reiniciar (útil al spamear el test)
+                // Detener audio previo si está sonando
                 if (this.currentAudioTest) {
                     this.currentAudioTest.pause();
                     this.currentAudioTest.currentTime = 0;
@@ -334,7 +384,28 @@
                     this.playBeep();
                     return;
                 }
+
+                // Intentar Web Audio API con buffer pre-cargado (funciona en background tabs)
+                if (this.alarmAudioBuffer && this.audioCtx) {
+                    try {
+                        // Resumir el contexto si Chrome lo suspendió
+                        if (this.audioCtx.state === 'suspended') {
+                            this.audioCtx.resume();
+                        }
+                        const source = this.audioCtx.createBufferSource();
+                        const gainNode = this.audioCtx.createGain();
+                        source.buffer = this.alarmAudioBuffer;
+                        gainNode.gain.value = this.alarmVolume / 100;
+                        source.connect(gainNode);
+                        gainNode.connect(this.audioCtx.destination);
+                        source.start(0);
+                        return; // Éxito con Web Audio API
+                    } catch(e) {
+                        console.log('Web Audio buffer playback falló, usando Audio element', e);
+                    }
+                }
                 
+                // Fallback: Audio element (puede ser bloqueado en background)
                 this.currentAudioTest = new Audio('/sounds/' + this.alarmSound);
                 this.currentAudioTest.volume = this.alarmVolume / 100;
                 this.currentAudioTest.play().catch(e => {
@@ -419,8 +490,9 @@
             // Restaurar título original
             document.title = this._baseTitle;
 
-            // Cancelar alarma en el SW
+            // Cancelar alarma en el SW y keepalive
             this.swCancelAlarm();
+            this.stopKeepalive();
 
             // Limpieza total del storage local
             localStorage.removeItem('cronSprint_mode');

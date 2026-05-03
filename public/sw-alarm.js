@@ -1,13 +1,13 @@
 /**
  * CronSprint Alarm Service Worker
  * Manages the sprint timer independently of the page's visibility/focus state.
- * This ensures the alarm fires even when the tab is minimized, backgrounded, or inactive.
+ * Uses a periodic self-check instead of setTimeout to survive Chrome's SW throttling.
  */
 
 const CHANNEL_NAME = 'cron-sprint-alarm';
 const bc = new BroadcastChannel(CHANNEL_NAME);
 
-let alarmTimeoutId = null;
+let alarmCheckIntervalId = null;
 let alarmTargetTs = null;
 
 // ──────────────────────────────────────────────
@@ -25,42 +25,68 @@ self.addEventListener('message', (event) => {
     const { type, targetTs } = event.data || {};
 
     if (type === 'SET_ALARM') {
-        // Cancel any existing alarm first
-        if (alarmTimeoutId !== null) {
-            clearTimeout(alarmTimeoutId);
-            alarmTimeoutId = null;
-        }
-
         alarmTargetTs = targetTs;
-        const delay = targetTs - Date.now();
 
-        if (delay <= 0) {
-            // Already expired — fire immediately
-            fireAlarm();
-            return;
-        }
-
-        alarmTimeoutId = setTimeout(() => {
-            alarmTimeoutId = null;
-            fireAlarm();
-        }, delay);
+        // Start periodic checking if not already running
+        startAlarmCheck();
 
     } else if (type === 'CANCEL_ALARM') {
-        if (alarmTimeoutId !== null) {
-            clearTimeout(alarmTimeoutId);
-            alarmTimeoutId = null;
-        }
+        stopAlarmCheck();
         alarmTargetTs = null;
 
     } else if (type === 'PING_ALARM_STATUS') {
         // Page is asking if an alarm is pending (e.g. after page reload)
         event.source?.postMessage({
             type: 'ALARM_STATUS',
-            hasPendingAlarm: alarmTimeoutId !== null,
+            hasPendingAlarm: alarmTargetTs !== null,
             targetTs: alarmTargetTs
         });
+
+    } else if (type === 'KEEPALIVE') {
+        // Just a keepalive ping from the page to prevent SW termination
+        // No action needed — receiving the message resets the SW idle timer
     }
 });
+
+// ──────────────────────────────────────────────
+// Periodic alarm check (survives Chrome throttling)
+// ──────────────────────────────────────────────
+function startAlarmCheck() {
+    // Clear any existing interval
+    if (alarmCheckIntervalId !== null) {
+        clearInterval(alarmCheckIntervalId);
+    }
+
+    // Check immediately
+    if (checkAlarm()) return;
+
+    // Then check every 1 second for precision
+    alarmCheckIntervalId = setInterval(() => {
+        checkAlarm();
+    }, 1000);
+}
+
+function stopAlarmCheck() {
+    if (alarmCheckIntervalId !== null) {
+        clearInterval(alarmCheckIntervalId);
+        alarmCheckIntervalId = null;
+    }
+}
+
+function checkAlarm() {
+    if (alarmTargetTs === null) {
+        stopAlarmCheck();
+        return true;
+    }
+
+    if (Date.now() >= alarmTargetTs) {
+        stopAlarmCheck();
+        fireAlarm();
+        return true;
+    }
+
+    return false;
+}
 
 // ──────────────────────────────────────────────
 // Notification click → focus the tab
@@ -83,17 +109,24 @@ self.addEventListener('notificationclick', (event) => {
 function fireAlarm() {
     alarmTargetTs = null;
 
-    // 1. Notify the page via BroadcastChannel (works if tab is open, even if hidden)
+    // 1. Notify ALL open tabs via BroadcastChannel
     bc.postMessage({ type: 'ALARM_FIRED' });
 
-    // 2. Show a system notification as fallback (visible even if tab is minimized/closed)
+    // 2. Also send directly to all controlled clients (belt and suspenders)
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+        clients.forEach(client => {
+            client.postMessage({ type: 'ALARM_FIRED' });
+        });
+    });
+
+    // 3. Show a system notification (visible even if tab is minimized/closed)
     self.registration.showNotification('⏱ ¡CronSprint completado!', {
         body: 'Tu sprint ha terminado. ¡Registra el tiempo trabajado!',
         icon: '/images/flexiweek-Iso.png',
         badge: '/images/flexiweek-Iso.png',
         requireInteraction: true,
         tag: 'cron-sprint-alarm',
-        vibrate: [200, 100, 200],
+        vibrate: [200, 100, 200, 100, 200],
         actions: [
             { action: 'open', title: '📋 Registrar tiempo' }
         ]
