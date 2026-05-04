@@ -291,7 +291,7 @@
         @mousedown.middle.prevent=""
         @wheel.prevent="onWheel($event)"
         @dblclick="onCanvasDblclick($event)"
-        @contextmenu.prevent=""
+        @contextmenu.prevent="onCanvasContextmenu($event)"
         @touchstart.passive="onCanvasTouchstart($event)"
     >
         {{-- Grid de fondo --}}
@@ -424,19 +424,18 @@
                     {{-- Título --}}
                     <div class="pz-field">
                         <label>Título</label>
-                        <input type="text" x-model="editItem.title"
-                            @keydown.enter.stop="saveField('title', editItem.title); $el.blur()"
+                        <textarea rows="1" x-model="editItem.title"
+                            class="auto-grow"
                             @keydown.escape="closePanel()"
                             @blur="editItem && saveField('title', editItem.title)"
                             placeholder="Nombre de la caja..."
-                        />
+                        ></textarea>
                     </div>
 
                     {{-- Notas --}}
                     <div class="pz-field">
                         <label>Notas</label>
                         <textarea rows="4" x-model="editItem.notes"
-                            @keydown.ctrl.enter="saveField('notes', editItem.notes)"
                             @keydown.escape="closePanel()"
                             @blur="editItem && saveField('notes', editItem.notes)"
                             placeholder="Descripción, ideas, links..."
@@ -532,7 +531,7 @@
         x-transition:leave="transition ease-in duration-75"
         x-transition:leave-start="opacity-100 scale-100"
         x-transition:leave-end="opacity-0 scale-95"
-        :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
+        :style="{ left: contextMenuPos.x + 'px', top: contextMenuPos.y + 'px' }"
         @click.outside="contextMenu.visible = false"
     >
         <template x-if="contextMenu.type === 'item'">
@@ -618,6 +617,13 @@
             <div>
                 <div class="pz-context-item danger" @click="quickDeleteConnection(contextMenu.target); contextMenu.visible=false">
                     ✕ Eliminar conexión
+                </div>
+            </div>
+        </template>
+        <template x-if="contextMenu.type === 'canvas'">
+            <div>
+                <div class="pz-context-item" @click="addItemAtContextMenu(); contextMenu.visible=false">
+                    ＋ Nueva Idea
                 </div>
             </div>
         </template>
@@ -719,7 +725,7 @@
 
     {{-- HINT --}}
     <div class="pz-hint" x-text="_isTouchDevice
-        ? 'mantener para opciones · doble tap para editar · tap largo en canvas para crear · pellizco para zoom'
+        ? 'mantener para opciones · doble tap para editar · ＋ Caja para crear · pellizco para zoom'
         : 'doble click para crear · click derecho para opciones · click scroll para moverse · scroll para zoom'
     "></div>
 
@@ -758,6 +764,7 @@
 
         // Menú contextual
         contextMenu: { visible: false, x: 0, y: 0, type: null, target: null },
+        contextMenuPos: { x: 0, y: 0 },
 
         // Modal de periodos
         periodModal: { visible: false, targetItem: null, periods: [], loading: false },
@@ -857,19 +864,7 @@
             this.contextMenu.visible = false;
             this.isPanning = true;
             this.panStart = { x: t.clientX - this.panX, y: t.clientY - this.panY };
-
-            // Long-press en canvas vacío → doble tap (crear caja)
-            clearTimeout(this._longPressTimer);
-            this._longPressTimer = setTimeout(() => {
-                if (this.isPanning && !this.dragging) {
-                    const fakeEvent = {
-                        currentTarget: document.getElementById('pizarra-canvas'),
-                        clientX: this._touchStartPos.x,
-                        clientY: this._touchStartPos.y,
-                    };
-                    this.onCanvasDblclick(fakeEvent);
-                }
-            }, 600);
+            // En touch NO se crea caja por long-press en el canvas — usar el botón "＋ Caja" del toolbar.
         },
 
         // ─── ITEM TOUCH ──────────────────────────────────────────────────────
@@ -1326,12 +1321,49 @@
             this.isMultiDragging = false;
         },
 
+        // ─── CONTEXT MENU ─────────────────────────
+        // Muestra el menú contextual ajustando la posición para que siempre esté en pantalla
+        showContextMenu(x, y, type, target) {
+            this.contextMenu = { visible: true, x, y, type, target };
+            this.$nextTick(() => {
+                const menu = document.querySelector('.pz-context-menu');
+                if (!menu) return;
+                const rect = menu.getBoundingClientRect();
+                const vw = window.innerWidth;
+                const vh = window.innerHeight;
+                const margin = 8;
+                let ax = x;
+                let ay = y;
+                // Ajustar horizontal
+                if (ax + rect.width > vw - margin) ax = vw - rect.width - margin;
+                if (ax < margin) ax = margin;
+                // Ajustar vertical: priorizar mostrar hacia abajo; si no cabe, ir hacia arriba
+                if (ay + rect.height > vh - margin) ay = y - rect.height;
+                if (ay < margin) ay = margin;
+                this.contextMenuPos = { x: ax, y: ay };
+            });
+        },
+
         onItemRightclick(e, item) {
-            this.contextMenu = { visible: true, x: e.clientX, y: e.clientY, type: 'item', target: item };
+            this.showContextMenu(e.clientX, e.clientY, 'item', item);
         },
 
         onConnectionRightclick(e, conn) {
-            this.contextMenu = { visible: true, x: e.clientX, y: e.clientY, type: 'connection', target: conn };
+            this.showContextMenu(e.clientX, e.clientY, 'connection', conn);
+        },
+
+        onCanvasContextmenu(e) {
+            // Guardar la posición en coordenadas de canvas para crear la idea ahí
+            const svgRect = document.getElementById('pizarra-canvas').getBoundingClientRect();
+            const canvasX = (e.clientX - svgRect.left - this.panX) / this.scale;
+            const canvasY = (e.clientY - svgRect.top  - this.panY) / this.scale;
+            this.showContextMenu(e.clientX, e.clientY, 'canvas', { canvasX, canvasY });
+        },
+
+        addItemAtContextMenu() {
+            if (!this.contextMenu.target) return;
+            const { canvasX, canvasY } = this.contextMenu.target;
+            this.$wire.addItem(canvasX, canvasY).then(() => this.reload());
         },
 
         // ─── PROMOCION A TAREA ───────────────────

@@ -97,7 +97,7 @@ class CronSprint extends Component
         }
         
         // Evaluar progreso tras actualizar a InProgress para que si termina, lo cubra
-        if ($task->progress >= 100 && $task->status !== TaskStatus::Completed) {
+        if ($task->completion_method === 'time' && $task->progress >= 100 && $task->status !== TaskStatus::Completed) {
             $task->update(['status' => TaskStatus::Completed]);
             $this->dispatch('toast', message: "¡Tarea completada! {$successMessage}", type: 'success');
         } else {

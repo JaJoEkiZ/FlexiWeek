@@ -465,7 +465,7 @@
             inputMins: '',
 
             init() {
-                this.$watch('progress', val => { if(val >= 100) this.markCompleted(); });
+                this.$watch('progress', val => { if(val >= 100 && this.completionMethod === 'time') this.markCompleted(); });
             },
 
             // Llamada fiable a Livewire en producción (sin depender de magic props)
@@ -539,16 +539,38 @@
                        let st = this.subtasks.find(s => s.id == this.activeSubtaskId);
                        if(st) st.spent_minutes += total;
                     }
-                    if(this.estimatedMinutes > 0) {
-                       this.progress = Math.min(100, Math.round((this.spentMinutes / this.estimatedMinutes) * 100));
-                    } else {
-                       this.progress = 100;
-                    }
 
-                    if (this.progress >= 100) {
-                        this.markCompleted();
-                    } else if (this.statusValue === 'pending') {
-                        this.markInProgress();
+                    // Recalcular progreso según el método de completación
+                    if (this.completionMethod === 'subtasks') {
+                        // Híbrido: 50% completitud subtareas + 50% tiempo
+                        let totalCount = this.subtasks.length;
+                        let completedCount = this.subtasks.filter(s => s.is_completed).length;
+                        let completionRatio = totalCount > 0 ? completedCount / totalCount : 0;
+
+                        if (this.estimatedMinutes > 0) {
+                            let timeRatio = Math.min(this.spentMinutes / this.estimatedMinutes, 1);
+                            this.progress = Math.round((completionRatio * 0.5 + timeRatio * 0.5) * 100);
+                        } else {
+                            this.progress = Math.round(completionRatio * 100);
+                        }
+
+                        // Subtask tasks: NEVER auto-complete, only transition to InProgress
+                        if (this.statusValue === 'pending' || this.statusValue === 'paused') {
+                            this.markInProgress();
+                        }
+                    } else {
+                        // Time-based: cálculo simple por tiempo
+                        if(this.estimatedMinutes > 0) {
+                           this.progress = Math.min(100, Math.round((this.spentMinutes / this.estimatedMinutes) * 100));
+                        } else {
+                           this.progress = 100;
+                        }
+
+                        if (this.progress >= 100) {
+                            this.markCompleted();
+                        } else if (this.statusValue === 'pending' || this.statusValue === 'paused') {
+                            this.markInProgress();
+                        }
                     }
                     
                     this._wireCall('addTime', this.taskId, h, m, this.activeSubtaskId);
