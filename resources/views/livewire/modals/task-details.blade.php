@@ -208,7 +208,7 @@
                                                     @endif
                                                 </div>
                                                 @if($isEditing)
-                                                    <input type="text" wire:model="subtaskDescriptions.{{ $subtask->id }}" class="block w-full rounded bg-[#3c3c3c] border-[#333] text-[#9d9d9d] focus:border-[#007fd4] focus:ring-[#007fd4] text-xs py-1.5 px-3 placeholder-[#555]" placeholder="Detalles de la subtarea...">
+                                                    <textarea wire:model="subtaskDescriptions.{{ $subtask->id }}" rows="1" class="auto-grow block w-full rounded bg-[#3c3c3c] border-[#333] text-[#9d9d9d] focus:border-[#007fd4] focus:ring-[#007fd4] text-xs py-1.5 px-3 placeholder-[#555]" placeholder="Detalles de la subtarea..."></textarea>
                                                 @else
                                                     @if($subtaskDescriptions[$subtask->id] ?? false)
                                                         <p class="text-xs text-[#9d9d9d] pl-5">{{ $subtaskDescriptions[$subtask->id] }}</p>

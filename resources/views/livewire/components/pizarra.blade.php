@@ -424,19 +424,18 @@
                     {{-- Título --}}
                     <div class="pz-field">
                         <label>Título</label>
-                        <input type="text" x-model="editItem.title"
-                            @keydown.enter.stop="saveField('title', editItem.title); $el.blur()"
+                        <textarea rows="1" x-model="editItem.title"
+                            class="auto-grow"
                             @keydown.escape="closePanel()"
                             @blur="editItem && saveField('title', editItem.title)"
                             placeholder="Nombre de la caja..."
-                        />
+                        ></textarea>
                     </div>
 
                     {{-- Notas --}}
                     <div class="pz-field">
                         <label>Notas</label>
                         <textarea rows="4" x-model="editItem.notes"
-                            @keydown.ctrl.enter="saveField('notes', editItem.notes)"
                             @keydown.escape="closePanel()"
                             @blur="editItem && saveField('notes', editItem.notes)"
                             placeholder="Descripción, ideas, links..."
