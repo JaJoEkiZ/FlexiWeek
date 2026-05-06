@@ -4,7 +4,7 @@
     activeTab="metrics"
 >
 
-<div class="p-4 lg:p-8 space-y-6" wire:key="metrics-view">
+<div class="p-1 sm:p-4 lg:p-8 space-y-4 sm:space-y-6" wire:key="metrics-view">
 
     {{-- Selector de modo: Por Período / Por Rango --}}
     <div class="flex flex-col md:flex-row gap-4 items-start md:items-end">
@@ -185,11 +185,11 @@
         {{-- Gráficos --}}
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {{-- Doughnut: Estado de tareas --}}
-            <div class="bg-[#252526] border border-[#333] rounded-lg p-5">
+            <div class="bg-[#252526] border border-[#333] rounded-lg p-4 sm:p-5">
                 <h3 class="text-xs text-[#7b7b7b] uppercase tracking-wider mb-4">Distribución de Estados</h3>
-                <div class="flex items-center gap-4" style="height: 280px;">
-                    {{-- Leyenda izquierda con datos numéricos --}}
-                    <div class="flex flex-col gap-2.5 min-w-[140px] shrink-0">
+                <div class="flex flex-col md:flex-row items-center gap-4" style="min-height: 200px;">
+                    {{-- Leyenda: horizontal en móvil, vertical en desktop --}}
+                    <div class="flex flex-wrap md:flex-col gap-x-4 gap-y-1.5 md:gap-2.5 md:min-w-[140px] shrink-0 w-full md:w-auto justify-center md:justify-start">
                         @php
                             $statusItems = [
                                 ['label' => 'Completadas', 'value' => $metrics['completed'], 'color' => '#4ec9b0'],
@@ -200,27 +200,27 @@
                             ];
                         @endphp
                         @foreach($statusItems as $item)
-                            <div class="flex items-center gap-2 group" data-status-legend="{{ $loop->index }}">
-                                <span class="w-2.5 h-2.5 rounded-full shrink-0 transition-transform duration-200 group-hover:scale-125" style="background: {{ $item['color'] }}"></span>
-                                <span class="text-xs text-[#8b949e] group-hover:text-white transition-colors duration-200">{{ $item['label'] }}</span>
-                                <span class="text-xs font-mono font-semibold ml-auto transition-colors duration-200" style="color: {{ $item['color'] }}">{{ $item['value'] }}</span>
+                            <div class="flex items-center gap-1.5 md:gap-2 group" data-status-legend="{{ $loop->index }}">
+                                <span class="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full shrink-0 transition-transform duration-200 group-hover:scale-125" style="background: {{ $item['color'] }}"></span>
+                                <span class="text-[10px] md:text-xs text-[#8b949e] group-hover:text-white transition-colors duration-200">{{ $item['label'] }}</span>
+                                <span class="text-[10px] md:text-xs font-mono font-semibold transition-colors duration-200" style="color: {{ $item['color'] }}">{{ $item['value'] }}</span>
                             </div>
                         @endforeach
                     </div>
                     {{-- Gráfico doughnut --}}
-                    <div class="flex-1 h-full">
+                    <div class="flex-1 w-full" style="height: 220px; max-height: 280px;">
                         <canvas id="statusChart" wire:ignore></canvas>
                     </div>
                 </div>
             </div>
 
             {{-- Barras: Estimado vs Invertido --}}
-            <div class="bg-[#252526] border border-[#333] rounded-lg p-5"
+            <div class="bg-[#252526] border border-[#333] rounded-lg p-4 sm:p-5"
                  x-data="{ timeFormat: 'mm' }">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-xs text-[#7b7b7b] uppercase tracking-wider"
-                        x-text="timeFormat === 'mm' ? 'Estimado vs Invertido (min)' : 'Estimado vs Invertido (hh:mm)'">Estimado vs Invertido (min)</h3>
-                    <div class="flex bg-[#1e1e1e] rounded border border-[#333] overflow-hidden">
+                <div class="flex items-center justify-between mb-4 gap-2">
+                    <h3 class="text-[10px] sm:text-xs text-[#7b7b7b] uppercase tracking-wider"
+                        x-text="timeFormat === 'mm' ? 'Tiempo Invertido (min)' : 'Tiempo Invertido (hh:mm)'">Tiempo Invertido (min)</h3>
+                    <div class="flex bg-[#1e1e1e] rounded border border-[#333] overflow-hidden shrink-0">
                         <button @click="timeFormat = 'mm'; $dispatch('time-format-changed', { format: 'mm' })"
                                 :class="timeFormat === 'mm' ? 'bg-[#007fd4] text-white' : 'text-[#8b949e] hover:text-white hover:bg-[#333]'"
                                 class="px-2.5 py-1 text-[10px] font-medium transition-all">mm</button>
@@ -229,7 +229,7 @@
                                 class="px-2.5 py-1 text-[10px] font-medium transition-all">hh:mm</button>
                     </div>
                 </div>
-                <div style="height: 280px;">
+                <div class="w-full" style="height: 250px; min-height: 200px;">
                     <canvas id="timeChart" wire:ignore></canvas>
                 </div>
             </div>
@@ -350,7 +350,10 @@
                     type: 'bar',
                     plugins: [barValuePlugin],
                     data: {
-                        labels: metrics.timeChart.labels.map(l => l.length > 15 ? l.substring(0, 15) + '...' : l),
+                        labels: metrics.timeChart.labels.map(l => {
+                            const maxLen = window.innerWidth < 640 ? 8 : 15;
+                            return l.length > maxLen ? l.substring(0, maxLen) + '…' : l;
+                        }),
                         datasets: [
                             { label: 'Estimado', data: metrics.timeChart.estimated, backgroundColor: 'rgba(0, 127, 212, 0.6)', borderColor: '#007fd4', borderWidth: 1, borderRadius: 3 },
                             { label: 'Invertido', data: metrics.timeChart.spent, backgroundColor: 'rgba(78, 201, 176, 0.6)', borderColor: '#4ec9b0', borderWidth: 1, borderRadius: 3 }
@@ -362,7 +365,7 @@
                         layout: { padding: { top: 18 } },
                         animation: { duration: 800, easing: 'easeOutQuart' },
                         scales: {
-                            x: { ticks: { color: '#7b7b7b', font: { size: 10 } }, grid: { color: 'rgba(51, 51, 51, 0.5)' } },
+                            x: { ticks: { color: '#7b7b7b', font: { size: window.innerWidth < 640 ? 8 : 10 }, maxRotation: window.innerWidth < 640 ? 45 : 0 }, grid: { color: 'rgba(51, 51, 51, 0.5)' } },
                             y: {
                                 ticks: {
                                     color: '#7b7b7b',
