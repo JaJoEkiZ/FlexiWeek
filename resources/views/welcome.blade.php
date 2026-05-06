@@ -145,7 +145,7 @@
                 <div class="mb-16">
                     <blockquote class="quote-accent text-left max-w-lg mx-auto pl-6 py-3">
                         <p class="text-[#7b7b7b] text-base md:text-lg italic leading-snug">
-                            "Vivimos en un presente eterno, sin pasado que aprender ni futuro que imaginar."
+                            "Estamos estancados en un presente que no tiene pasado del cual aprender y que no tiene futuro hacia el cual avanzar."
                         </p>
                         <p class="text-[#555555] text-sm md:text-base italic leading-snug">
                             "We are stuck in a present that has no past to learn from and no future to move towards."
