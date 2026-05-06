@@ -725,7 +725,7 @@
 
     {{-- HINT --}}
     <div class="pz-hint" x-text="_isTouchDevice
-        ? 'mantener para opciones · doble tap para editar · ＋ Caja para crear · pellizco para zoom'
+        ? 'mantener vacío → nueva idea · mantener caja → opciones · doble tap → editar · pellizco → zoom'
         : 'doble click para crear · click derecho para opciones · click scroll para moverse · scroll para zoom'
     "></div>
 
@@ -794,6 +794,7 @@
         _lastTapTime: 0,
         _lastTapItem: null,
         _longPressTimer: null,
+        _canvasLongPressTimer: null,
         _pinchStartDist: 0,
         _pinchStartScale: 1,
         _isTouchDevice: false,
@@ -847,6 +848,7 @@
         onCanvasTouchstart(e) {
             if (e.touches.length === 2) {
                 // Pellizco: iniciar zoom
+                clearTimeout(this._canvasLongPressTimer);
                 const dx = e.touches[0].clientX - e.touches[1].clientX;
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
                 this._pinchStartDist = Math.hypot(dx, dy);
@@ -864,7 +866,21 @@
             this.contextMenu.visible = false;
             this.isPanning = true;
             this.panStart = { x: t.clientX - this.panX, y: t.clientY - this.panY };
-            // En touch NO se crea caja por long-press en el canvas — usar el botón "＋ Caja" del toolbar.
+
+            // Long-press en canvas → menú contextual para crear ideas (único camino en touch)
+            clearTimeout(this._canvasLongPressTimer);
+            this._canvasLongPressTimer = setTimeout(() => {
+                // Solo si no se movió (no es pan)
+                if (this._touchStartPos) {
+                    if (navigator.vibrate) navigator.vibrate(30);
+                    this.isPanning = false;
+                    // Calcular posición en canvas para crear la idea ahí
+                    const svgRect = document.getElementById('pizarra-canvas').getBoundingClientRect();
+                    const canvasX = (t.clientX - svgRect.left - this.panX) / this.scale;
+                    const canvasY = (t.clientY - svgRect.top  - this.panY) / this.scale;
+                    this.showContextMenu(t.clientX, t.clientY, 'canvas', { canvasX, canvasY });
+                }
+            }, 600);
         },
 
         // ─── ITEM TOUCH ──────────────────────────────────────────────────────
@@ -906,6 +922,7 @@
         onTouchmove(e) {
             if (e.touches.length === 2) {
                 // Pellizco en curso → zoom
+                clearTimeout(this._canvasLongPressTimer);
                 const dx = e.touches[0].clientX - e.touches[1].clientX;
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
                 const dist = Math.hypot(dx, dy);
@@ -924,7 +941,7 @@
 
             const t = e.touches[0];
 
-            // Si se movió más de 8px, cancelar el long-press (no es tap)
+            // Si se movió más de 8px, cancelar los long-press (no es tap, es pan/drag)
             if (this._touchStartPos) {
                 const moved = Math.hypot(
                     t.clientX - this._touchStartPos.x,
@@ -933,6 +950,8 @@
                 if (moved > 8) {
                     clearTimeout(this._longPressTimer);
                     this._longPressTimer = null;
+                    clearTimeout(this._canvasLongPressTimer);
+                    this._canvasLongPressTimer = null;
                 }
             }
 
@@ -944,6 +963,8 @@
         onTouchend(e) {
             clearTimeout(this._longPressTimer);
             this._longPressTimer = null;
+            clearTimeout(this._canvasLongPressTimer);
+            this._canvasLongPressTimer = null;
             this._pinchStartDist = 0;
 
             const touch = e.changedTouches[0];
@@ -1056,8 +1077,8 @@
                 this.panStart = { x: e.clientX - this.panX, y: e.clientY - this.panY };
                 return;
             }
-            // Lasso: click izquierdo en área vacía
-            if (e.button === 0 && !this.connectMode) {
+            // Lasso: click izquierdo en área vacía (solo en desktop, no en touch)
+            if (e.button === 0 && !this.connectMode && !this._isTouchDevice) {
                 this.clearSelection();
                 this.isSelecting = true;
                 this.selectionBox = { x1: e.clientX, y1: e.clientY, x2: e.clientX, y2: e.clientY };
@@ -1188,6 +1209,8 @@
         },
 
         onCanvasDblclick(e) {
+            // En pantallas táctiles, solo se crean ideas via menú contextual (long-press) o toolbar
+            if (this._isTouchDevice) return;
             const rect = e.currentTarget.getBoundingClientRect();
             const x = (e.clientX - rect.left - this.panX) / this.scale;
             const y = (e.clientY - rect.top  - this.panY) / this.scale;

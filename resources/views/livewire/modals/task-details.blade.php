@@ -121,7 +121,7 @@
                                                         <span class="text-[#007fd4]">🕐</span>
                                                         <div class="flex flex-col">
                                                             <span class="text-[#9d9d9d] font-mono">{{ \Carbon\Carbon::parse($log->log_date)->format('d/m/Y') }}</span>
-                                                            <span class="text-[#5a5a5a] font-mono text-[10px]">cargado {{ \Carbon\Carbon::parse($log->created_at)->setTimezone(auth()->user()->timezone ?? config('app.timezone'))->format('H:i') }}</span>
+                                                            <span class="text-[#5a5a5a] font-mono text-[10px]">cargado {{ \Carbon\Carbon::parse($log->created_at)->setTimezone(auth()->user()->timezone ?? config('app.timezone'))->format('H:i') }} <span class="text-[#4ec9b0]">(+{{ intdiv($log->minutes_spent, 60) }}h {{ $log->minutes_spent % 60 }}m)</span></span>
                                                         </div>
                                                     </div>
                                                     <span class="text-[#4ec9b0] font-medium">
@@ -202,7 +202,7 @@
                                                                 @endif
                                                             </div>
                                                             @if($subtask->spent_minutes > 0)
-                                                                <span class="text-[#5a5a5a] font-mono text-[10px]">cargado {{ \Carbon\Carbon::parse($subtask->updated_at)->setTimezone(auth()->user()->timezone ?? config('app.timezone'))->format('H:i d/m/Y') }}</span>
+                                                                <span class="text-[#5a5a5a] font-mono text-[10px]">cargado {{ \Carbon\Carbon::parse($subtask->updated_at)->setTimezone(auth()->user()->timezone ?? config('app.timezone'))->format('H:i d/m/Y') }}@if($subtask->last_charge_minutes) <span class="text-[#4ec9b0]">(+{{ intdiv((int)$subtask->last_charge_minutes, 60) }}h {{ (int)$subtask->last_charge_minutes % 60 }}m)</span>@endif</span>
                                                             @endif
                                                         </div>
                                                     @endif

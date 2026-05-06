@@ -242,7 +242,8 @@ class WeeklyPlanner extends Component
 
             if ($subtask) {
                 $subtask->update([
-                    'spent_minutes' => $subtask->spent_minutes + $minutes
+                    'spent_minutes' => $subtask->spent_minutes + $minutes,
+                    'last_charge_minutes' => $minutes,
                 ]);
 
                 if ($task->completion_method === 'time' && $task->progress >= 100 && $task->status !== TaskStatus::Completed) {

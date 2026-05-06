@@ -9,12 +9,13 @@ class Subtask extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['title', 'description', 'is_completed', 'task_id', 'estimated_minutes', 'spent_minutes'];
+    protected $fillable = ['title', 'description', 'is_completed', 'task_id', 'estimated_minutes', 'spent_minutes', 'last_charge_minutes'];
 
     protected $casts = [
         'is_completed' => 'integer',
         'estimated_minutes' => 'decimal:2',
         'spent_minutes' => 'decimal:2',
+        'last_charge_minutes' => 'decimal:2',
     ];
 
     public function task()

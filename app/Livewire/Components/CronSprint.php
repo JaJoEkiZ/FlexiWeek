@@ -65,7 +65,8 @@ class CronSprint extends Component
             $subtask = Subtask::find($subtaskId);
             if ($subtask && $subtask->task_id == $taskId) {
                 $subtask->update([
-                    'spent_minutes' => $subtask->spent_minutes + $minutesDecimal
+                    'spent_minutes' => $subtask->spent_minutes + $minutesDecimal,
+                    'last_charge_minutes' => $minutesDecimal,
                 ]);
                 
                 $task->refresh(); // Refrescar relaciones tras cambiar subtarea
