@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\MetricsExportController;
 use App\Livewire\WeeklyPlanner;
 use App\Livewire\Components\PeriodMetrics;
 use App\Livewire\Components\Pizarra;
@@ -13,6 +14,7 @@ require __DIR__.'/settings.php';
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('planner/{period?}', WeeklyPlanner::class)->name('planner');
+    Route::get('metrics/export/pdf', [MetricsExportController::class, 'download'])->name('metrics.export.pdf');
     Route::get('metrics/{period?}', PeriodMetrics::class)->name('metrics');
     Route::get('pizarra', Pizarra::class)->name('pizarra');
 });

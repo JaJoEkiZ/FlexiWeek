@@ -49,6 +49,24 @@
                 @endif
             </div>
         @endif
+
+        {{-- Botón Exportar PDF --}}
+        @if($metrics['total'] > 0)
+            <a href="{{ $mode === 'period'
+                    ? route('metrics.export.pdf', ['period_id' => $selectedPeriodId])
+                    : route('metrics.export.pdf', ['range_start' => $rangeStart, 'range_end' => $rangeEnd]) }}"
+               target="_blank"
+               id="export-pdf-btn"
+               class="flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded border transition-all duration-300
+                      bg-[#1e3a23] border-[#2ea043] text-[#4ec9b0]
+                      hover:bg-[#2ea043] hover:text-white hover:shadow-lg hover:shadow-[#2ea043]/25
+                      active:scale-95 ml-auto shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Exportar PDF
+            </a>
+        @endif
     </div>
 
     {{-- Cards de resumen --}}
